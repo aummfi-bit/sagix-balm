@@ -9,8 +9,12 @@ Two underlyings, two tabs. Both are configurable — nothing is hardcoded to a t
 
 ## Live desk (website)
 
-Interactive Next.js desk lives in [`web/`](web/) — same greeks, term-structure callouts,
-scenario chart, strike ladder, and roll checklist. Deployed from that folder on Vercel.
+**Shareable URL:** [https://sagix-balm.vercel.app](https://sagix-balm.vercel.app)
+
+**Repo:** [github.com/aummfi-bit/sagix-balm](https://github.com/aummfi-bit/sagix-balm)
+
+Interactive Next.js desk lives in [`web/`](web/) — greeks, term-structure callouts,
+scenario chart, strike ladder, and roll checklist. Deployed on Vercel from the `web/` root.
 
 ```bash
 cd web && npm install && npm run dev
