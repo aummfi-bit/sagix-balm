@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "sagix-balm"
+version = "0.1.0"
+description = "Put-calendar / diagonal campaign tracker fed by Interactive Brokers"
+requires-python = ">=3.11"
+dependencies = [
+    "ib_async>=2.1.0",
+    "requests>=2.32",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0"]
+
+[project.scripts]
+balm = "balm.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

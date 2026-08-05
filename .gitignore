@@ -1,0 +1,19 @@
+__pycache__/
+*.py[cod]
+.venv/
+*.egg-info/
+.pytest_cache/
+
+# Real config holds an IBKR Flex token — never commit it.
+config.toml
+
+# Account snapshots contain positions and balances.
+data/snapshots/*.json
+!data/snapshots/.gitkeep
+
+# Next.js / Vercel
+web/node_modules/
+web/.next/
+web/out/
+.vercel/
+.env*.local

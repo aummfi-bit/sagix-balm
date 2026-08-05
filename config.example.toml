@@ -1,0 +1,95 @@
+# Copy to config.toml and edit. config.toml is gitignored because the Flex
+# token grants read access to your entire account history.
+
+snapshot_dir = "data/snapshots"
+
+# One tab per underlying in the canvas. Two is the intended layout, but the
+# list is not fixed length -- add or remove entries freely.
+
+[[underlyings]]
+symbol = "GLXY"
+primary_exchange = "NASDAQ"
+label = "Galaxy Digital"
+
+# The plan block describes the structure to model when running `balm plan`
+# without TWS. `balm sync` ignores it whenever it can infer the real position
+# from your holdings. Volatilities are decimals: 0.98 means 98%.
+[underlyings.plan]
+spot = 22.70
+anchor_strike = 22.5
+anchor_expiry = 2027-01-15
+anchor_iv = 0.98
+short_strike = 22.0
+short_expiry = 2026-08-14
+short_iv = 1.10
+contracts = 1
+# What you actually got filled at, used by the harvest-target check.
+short_credit = 1.21
+# Leverage of 30-day IV to spot: 1.5 means a 10% drop lifts 30-day IV by 15
+# points. Crypto-linked single names react hard; broad ETFs do not.
+vol_beta = 1.5
+
+# Long-dated expiries to compare in the anchor selection table.
+[[underlyings.plan.anchor_expiry_candidates]]
+expiry = 2027-01-15
+iv = 0.98
+[[underlyings.plan.anchor_expiry_candidates]]
+expiry = 2028-01-21
+iv = 0.90
+
+[[underlyings]]
+symbol = "IBIT"
+primary_exchange = "NASDAQ"
+label = "iShares Bitcoin Trust"
+
+[underlyings.plan]
+spot = 36.03
+anchor_strike = 36.0
+anchor_expiry = 2027-01-15
+anchor_iv = 0.421
+short_strike = 35.0
+short_expiry = 2026-08-14
+short_iv = 0.361
+contracts = 1
+short_credit = 0.38
+vol_beta = 0.7
+
+[[underlyings.plan.anchor_expiry_candidates]]
+expiry = 2027-01-15
+iv = 0.421
+[[underlyings.plan.anchor_expiry_candidates]]
+expiry = 2028-01-21
+iv = 0.478
+
+[tws]
+host = "127.0.0.1"
+# 7497 TWS paper / 7496 TWS live / 4002 Gateway paper / 4001 Gateway live
+port = 7497
+client_id = 17
+# Leave unset to use the first managed account the connection reports.
+# account = "U1234567"
+market_data_type = 2
+
+[flex]
+# Client Portal > Performance & Reports > Flex Queries.
+# Build a Trades query including underlyingSymbol, assetCategory, putCall,
+# strike, expiry, quantity, tradePrice, ibCommission, tradeDate, multiplier,
+# notes and tradeID.
+# query_id = "123456"
+token_env = "IBKR_FLEX_TOKEN"
+
+[model]
+risk_free_rate = 0.04
+dividend_yield = 0.0
+binomial_steps = 240
+strike_window = 0.25
+expirations = 8
+
+[rules]
+# Monday=0. Never carry an open short weekly past this weekday.
+roll_by_weekday = 2
+extrinsic_harvest_target = 0.80
+short_delta_target = 0.40
+short_delta_max = 0.55
+assignment_warn_premium = 0.10
+max_spread_pct = 0.10
