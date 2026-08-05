@@ -37,7 +37,7 @@ export function ScenarioChart({
         y1={zeroY}
         x2={width - pad.r}
         y2={zeroY}
-        stroke="var(--stroke)"
+        stroke="var(--border)"
         strokeDasharray="4 4"
       />
       {series.map((s) => {
@@ -66,8 +66,8 @@ export function ScenarioChart({
             x={x(i)}
             y={height - 10}
             textAnchor="middle"
-            className="fill-[var(--muted)] text-[10px]"
-            style={{ fontFamily: "var(--font-mono)" }}
+            className="fill-[var(--text-dim)] text-[10px]"
+            style={{ fontFamily: "ui-monospace, monospace" }}
           >
             {label}
           </text>
@@ -79,8 +79,8 @@ export function ScenarioChart({
           x={pad.l - 8}
           y={y(v) + 3}
           textAnchor="end"
-          className="fill-[var(--muted)] text-[10px]"
-          style={{ fontFamily: "var(--font-mono)" }}
+          className="fill-[var(--text-dim)] text-[10px]"
+          style={{ fontFamily: "ui-monospace, monospace" }}
         >
           {`$${v.toFixed(0)}`}
         </text>

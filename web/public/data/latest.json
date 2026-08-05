@@ -1,0 +1,2382 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-08-05T19:13:47+00:00",
+  "asof": "2026-08-05",
+  "account": {},
+  "rules": {
+    "rollByWeekday": 2,
+    "extrinsicHarvestTarget": 0.8,
+    "shortDeltaTarget": 0.4,
+    "shortDeltaMax": 0.55,
+    "assignmentWarnPremium": 0.1,
+    "maxSpreadPct": 0.1
+  },
+  "model": {
+    "riskFreeRate": 0.04,
+    "dividendYield": 0.0
+  },
+  "underlyings": [
+    {
+      "symbol": "GLXY",
+      "label": "Galaxy Digital",
+      "source": "model",
+      "spot": 22.7,
+      "structure": {
+        "contracts": 1,
+        "anchorDebit": null,
+        "shortCredit": 1.21,
+        "legs": [
+          {
+            "label": "anchor",
+            "strike": 22.5,
+            "expiry": "2027-01-15",
+            "dte": 163,
+            "quantity": 1,
+            "iv": 0.98,
+            "price": 5.4899,
+            "intrinsic": 0.0,
+            "extrinsic": 5.4899,
+            "earlyExercise": 0.0348,
+            "delta": -0.3456,
+            "gamma": 0.03348,
+            "theta": -0.0158,
+            "vega": 0.0566,
+            "positionTheta": -1.58,
+            "positionVega": 5.66,
+            "positionDelta": -34.56,
+            "positionValue": 548.99
+          },
+          {
+            "label": "short",
+            "strike": 22.0,
+            "expiry": "2026-08-14",
+            "dte": 9,
+            "quantity": -1,
+            "iv": 1.1,
+            "price": 1.2056,
+            "intrinsic": 0.0,
+            "extrinsic": 1.2056,
+            "earlyExercise": 0.0022,
+            "delta": -0.3905,
+            "gamma": 0.0239,
+            "theta": -0.0851,
+            "vega": 0.0137,
+            "positionTheta": 8.51,
+            "positionVega": -1.37,
+            "positionDelta": 39.05,
+            "positionValue": -120.56
+          }
+        ],
+        "net": {
+          "delta": 4.48,
+          "gamma": 0.9582,
+          "theta": 6.93,
+          "vega": 4.29,
+          "value": 428.43,
+          "shortTheta": 8.51,
+          "longTheta": -1.58,
+          "thetaRatio": 5.4
+        }
+      },
+      "atmWeeklyPremium": 1.55,
+      "termStructure": {
+        "shortIv": 1.1,
+        "anchorIv": 0.98,
+        "edge": 0.12,
+        "shape": "backwardation",
+        "verdict": "Front volatility is richer than the anchor's. The surface pays you to run this calendar."
+      },
+      "volBeta": 1.5,
+      "anchorCandidates": [
+        {
+          "expiry": "2027-01-15",
+          "dte": 163,
+          "strike": 17.0,
+          "iv": 0.98,
+          "cost": 2.58,
+          "costPctSpot": 0.1135,
+          "delta": -0.2129,
+          "theta": -0.0124,
+          "vega": 0.0441,
+          "weeksGross": 1.7,
+          "weeksRealistic": 2.2
+        },
+        {
+          "expiry": "2027-01-15",
+          "dte": 163,
+          "strike": 17.5,
+          "iv": 0.98,
+          "cost": 2.8,
+          "costPctSpot": 0.1233,
+          "delta": -0.226,
+          "theta": -0.0128,
+          "vega": 0.0456,
+          "weeksGross": 1.8,
+          "weeksRealistic": 2.4
+        },
+        {
+          "expiry": "2027-01-15",
+          "dte": 163,
+          "strike": 18.0,
+          "iv": 0.98,
+          "cost": 3.03,
+          "costPctSpot": 0.1335,
+          "delta": -0.2392,
+          "theta": -0.0132,
+          "vega": 0.0471,
+          "weeksGross": 2.0,
+          "weeksRealistic": 2.6
+        },
+        {
+          "expiry": "2027-01-15",
+          "dte": 163,
+          "strike": 18.5,
+          "iv": 0.98,
+          "cost": 3.27,
+          "costPctSpot": 0.144,
+          "delta": -0.2523,
+          "theta": -0.0136,
+          "vega": 0.0484,
+          "weeksGross": 2.1,
+          "weeksRealistic": 2.8
+        },
+        {
+          "expiry": "2027-01-15",
+          "dte": 163,
+          "strike": 19.0,
+          "iv": 0.98,
+          "cost": 3.52,
+          "costPctSpot": 0.1549,
+          "delta": -0.2655,
+          "theta": -0.0139,
+          "vega": 0.0497,
+          "weeksGross": 2.3,
+          "weeksRealistic": 3.0
+        },
+        {
+          "expiry": "2027-01-15",
+          "dte": 163,
+          "strike": 19.5,
+          "iv": 0.98,
+          "cost": 3.77,
+          "costPctSpot": 0.1661,
+          "delta": -0.2787,
+          "theta": -0.0142,
+          "vega": 0.0509,
+          "weeksGross": 2.4,
+          "weeksRealistic": 3.2
+        },
+        {
+          "expiry": "2027-01-15",
+          "dte": 163,
+          "strike": 20.0,
+          "iv": 0.98,
+          "cost": 4.03,
+          "costPctSpot": 0.1777,
+          "delta": -0.2918,
+          "theta": -0.0145,
+          "vega": 0.0521,
+          "weeksGross": 2.6,
+          "weeksRealistic": 3.5
+        },
+        {
+          "expiry": "2027-01-15",
+          "dte": 163,
+          "strike": 20.5,
+          "iv": 0.98,
+          "cost": 4.3,
+          "costPctSpot": 0.1896,
+          "delta": -0.3049,
+          "theta": -0.0147,
+          "vega": 0.0531,
+          "weeksGross": 2.8,
+          "weeksRealistic": 3.7
+        },
+        {
+          "expiry": "2027-01-15",
+          "dte": 163,
+          "strike": 21.0,
+          "iv": 0.98,
+          "cost": 4.58,
+          "costPctSpot": 0.2018,
+          "delta": -0.3179,
+          "theta": -0.015,
+          "vega": 0.0541,
+          "weeksGross": 3.0,
+          "weeksRealistic": 3.9
+        },
+        {
+          "expiry": "2027-01-15",
+          "dte": 163,
+          "strike": 21.5,
+          "iv": 0.98,
+          "cost": 4.87,
+          "costPctSpot": 0.2144,
+          "delta": -0.3308,
+          "theta": -0.0152,
+          "vega": 0.055,
+          "weeksGross": 3.1,
+          "weeksRealistic": 4.2
+        },
+        {
+          "expiry": "2027-01-15",
+          "dte": 163,
+          "strike": 22.0,
+          "iv": 0.98,
+          "cost": 5.16,
+          "costPctSpot": 0.2272,
+          "delta": -0.3436,
+          "theta": -0.0154,
+          "vega": 0.0558,
+          "weeksGross": 3.3,
+          "weeksRealistic": 4.4
+        },
+        {
+          "expiry": "2027-01-15",
+          "dte": 163,
+          "strike": 22.5,
+          "iv": 0.98,
+          "cost": 5.46,
+          "costPctSpot": 0.2403,
+          "delta": -0.3563,
+          "theta": -0.0155,
+          "vega": 0.0566,
+          "weeksGross": 3.5,
+          "weeksRealistic": 4.7
+        },
+        {
+          "expiry": "2027-01-15",
+          "dte": 163,
+          "strike": 23.0,
+          "iv": 0.98,
+          "cost": 5.76,
+          "costPctSpot": 0.2537,
+          "delta": -0.3689,
+          "theta": -0.0157,
+          "vega": 0.0572,
+          "weeksGross": 3.7,
+          "weeksRealistic": 5.0
+        },
+        {
+          "expiry": "2027-01-15",
+          "dte": 163,
+          "strike": 23.5,
+          "iv": 0.98,
+          "cost": 6.07,
+          "costPctSpot": 0.2674,
+          "delta": -0.3814,
+          "theta": -0.0158,
+          "vega": 0.0578,
+          "weeksGross": 3.9,
+          "weeksRealistic": 5.2
+        },
+        {
+          "expiry": "2027-01-15",
+          "dte": 163,
+          "strike": 24.0,
+          "iv": 0.98,
+          "cost": 6.39,
+          "costPctSpot": 0.2813,
+          "delta": -0.3937,
+          "theta": -0.0159,
+          "vega": 0.0584,
+          "weeksGross": 4.1,
+          "weeksRealistic": 5.5
+        },
+        {
+          "expiry": "2027-01-15",
+          "dte": 163,
+          "strike": 24.5,
+          "iv": 0.98,
+          "cost": 6.71,
+          "costPctSpot": 0.2955,
+          "delta": -0.4059,
+          "theta": -0.0159,
+          "vega": 0.0588,
+          "weeksGross": 4.3,
+          "weeksRealistic": 5.8
+        },
+        {
+          "expiry": "2027-01-15",
+          "dte": 163,
+          "strike": 25.0,
+          "iv": 0.98,
+          "cost": 7.04,
+          "costPctSpot": 0.3099,
+          "delta": -0.4179,
+          "theta": -0.016,
+          "vega": 0.0592,
+          "weeksGross": 4.5,
+          "weeksRealistic": 6.1
+        },
+        {
+          "expiry": "2027-01-15",
+          "dte": 163,
+          "strike": 25.5,
+          "iv": 0.98,
+          "cost": 7.37,
+          "costPctSpot": 0.3246,
+          "delta": -0.4297,
+          "theta": -0.016,
+          "vega": 0.0596,
+          "weeksGross": 4.8,
+          "weeksRealistic": 6.3
+        },
+        {
+          "expiry": "2027-01-15",
+          "dte": 163,
+          "strike": 26.0,
+          "iv": 0.98,
+          "cost": 7.71,
+          "costPctSpot": 0.3395,
+          "delta": -0.4414,
+          "theta": -0.0161,
+          "vega": 0.0599,
+          "weeksGross": 5.0,
+          "weeksRealistic": 6.6
+        },
+        {
+          "expiry": "2027-01-15",
+          "dte": 163,
+          "strike": 26.5,
+          "iv": 0.98,
+          "cost": 8.05,
+          "costPctSpot": 0.3546,
+          "delta": -0.4529,
+          "theta": -0.0161,
+          "vega": 0.0601,
+          "weeksGross": 5.2,
+          "weeksRealistic": 6.9
+        },
+        {
+          "expiry": "2027-01-15",
+          "dte": 163,
+          "strike": 27.0,
+          "iv": 0.98,
+          "cost": 8.4,
+          "costPctSpot": 0.37,
+          "delta": -0.4642,
+          "theta": -0.016,
+          "vega": 0.0603,
+          "weeksGross": 5.4,
+          "weeksRealistic": 7.2
+        },
+        {
+          "expiry": "2027-01-15",
+          "dte": 163,
+          "strike": 27.5,
+          "iv": 0.98,
+          "cost": 8.75,
+          "costPctSpot": 0.3855,
+          "delta": -0.4754,
+          "theta": -0.016,
+          "vega": 0.0604,
+          "weeksGross": 5.6,
+          "weeksRealistic": 7.5
+        },
+        {
+          "expiry": "2027-01-15",
+          "dte": 163,
+          "strike": 28.0,
+          "iv": 0.98,
+          "cost": 9.11,
+          "costPctSpot": 0.4013,
+          "delta": -0.4863,
+          "theta": -0.016,
+          "vega": 0.0605,
+          "weeksGross": 5.9,
+          "weeksRealistic": 7.8
+        },
+        {
+          "expiry": "2028-01-21",
+          "dte": 534,
+          "strike": 17.0,
+          "iv": 0.9,
+          "cost": 5.04,
+          "costPctSpot": 0.2221,
+          "delta": -0.1939,
+          "theta": -0.0053,
+          "vega": 0.0754,
+          "weeksGross": 3.3,
+          "weeksRealistic": 4.3
+        },
+        {
+          "expiry": "2028-01-21",
+          "dte": 534,
+          "strike": 17.5,
+          "iv": 0.9,
+          "cost": 5.32,
+          "costPctSpot": 0.2345,
+          "delta": -0.2013,
+          "theta": -0.0054,
+          "vega": 0.0772,
+          "weeksGross": 3.4,
+          "weeksRealistic": 4.6
+        },
+        {
+          "expiry": "2028-01-21",
+          "dte": 534,
+          "strike": 18.0,
+          "iv": 0.9,
+          "cost": 5.61,
+          "costPctSpot": 0.247,
+          "delta": -0.2086,
+          "theta": -0.0055,
+          "vega": 0.0788,
+          "weeksGross": 3.6,
+          "weeksRealistic": 4.8
+        },
+        {
+          "expiry": "2028-01-21",
+          "dte": 534,
+          "strike": 18.5,
+          "iv": 0.9,
+          "cost": 5.9,
+          "costPctSpot": 0.2598,
+          "delta": -0.2159,
+          "theta": -0.0056,
+          "vega": 0.0804,
+          "weeksGross": 3.8,
+          "weeksRealistic": 5.1
+        },
+        {
+          "expiry": "2028-01-21",
+          "dte": 534,
+          "strike": 19.0,
+          "iv": 0.9,
+          "cost": 6.19,
+          "costPctSpot": 0.2727,
+          "delta": -0.2232,
+          "theta": -0.0057,
+          "vega": 0.082,
+          "weeksGross": 4.0,
+          "weeksRealistic": 5.3
+        },
+        {
+          "expiry": "2028-01-21",
+          "dte": 534,
+          "strike": 19.5,
+          "iv": 0.9,
+          "cost": 6.49,
+          "costPctSpot": 0.2859,
+          "delta": -0.2304,
+          "theta": -0.0057,
+          "vega": 0.0834,
+          "weeksGross": 4.2,
+          "weeksRealistic": 5.6
+        },
+        {
+          "expiry": "2028-01-21",
+          "dte": 534,
+          "strike": 20.0,
+          "iv": 0.9,
+          "cost": 6.79,
+          "costPctSpot": 0.2992,
+          "delta": -0.2375,
+          "theta": -0.0058,
+          "vega": 0.0849,
+          "weeksGross": 4.4,
+          "weeksRealistic": 5.8
+        },
+        {
+          "expiry": "2028-01-21",
+          "dte": 534,
+          "strike": 20.5,
+          "iv": 0.9,
+          "cost": 7.1,
+          "costPctSpot": 0.3127,
+          "delta": -0.2446,
+          "theta": -0.0059,
+          "vega": 0.0862,
+          "weeksGross": 4.6,
+          "weeksRealistic": 6.1
+        },
+        {
+          "expiry": "2028-01-21",
+          "dte": 534,
+          "strike": 21.0,
+          "iv": 0.9,
+          "cost": 7.41,
+          "costPctSpot": 0.3264,
+          "delta": -0.2516,
+          "theta": -0.0059,
+          "vega": 0.0875,
+          "weeksGross": 4.8,
+          "weeksRealistic": 6.4
+        },
+        {
+          "expiry": "2028-01-21",
+          "dte": 534,
+          "strike": 21.5,
+          "iv": 0.9,
+          "cost": 7.72,
+          "costPctSpot": 0.3402,
+          "delta": -0.2585,
+          "theta": -0.006,
+          "vega": 0.0888,
+          "weeksGross": 5.0,
+          "weeksRealistic": 6.6
+        },
+        {
+          "expiry": "2028-01-21",
+          "dte": 534,
+          "strike": 22.0,
+          "iv": 0.9,
+          "cost": 8.04,
+          "costPctSpot": 0.3542,
+          "delta": -0.2654,
+          "theta": -0.006,
+          "vega": 0.09,
+          "weeksGross": 5.2,
+          "weeksRealistic": 6.9
+        },
+        {
+          "expiry": "2028-01-21",
+          "dte": 534,
+          "strike": 22.5,
+          "iv": 0.9,
+          "cost": 8.36,
+          "costPctSpot": 0.3684,
+          "delta": -0.2722,
+          "theta": -0.0061,
+          "vega": 0.0912,
+          "weeksGross": 5.4,
+          "weeksRealistic": 7.2
+        },
+        {
+          "expiry": "2028-01-21",
+          "dte": 534,
+          "strike": 23.0,
+          "iv": 0.9,
+          "cost": 8.69,
+          "costPctSpot": 0.3827,
+          "delta": -0.2789,
+          "theta": -0.0061,
+          "vega": 0.0923,
+          "weeksGross": 5.6,
+          "weeksRealistic": 7.5
+        },
+        {
+          "expiry": "2028-01-21",
+          "dte": 534,
+          "strike": 23.5,
+          "iv": 0.9,
+          "cost": 9.02,
+          "costPctSpot": 0.3972,
+          "delta": -0.2856,
+          "theta": -0.0062,
+          "vega": 0.0933,
+          "weeksGross": 5.8,
+          "weeksRealistic": 7.8
+        },
+        {
+          "expiry": "2028-01-21",
+          "dte": 534,
+          "strike": 24.0,
+          "iv": 0.9,
+          "cost": 9.35,
+          "costPctSpot": 0.4118,
+          "delta": -0.2922,
+          "theta": -0.0062,
+          "vega": 0.0943,
+          "weeksGross": 6.0,
+          "weeksRealistic": 8.0
+        },
+        {
+          "expiry": "2028-01-21",
+          "dte": 534,
+          "strike": 24.5,
+          "iv": 0.9,
+          "cost": 9.68,
+          "costPctSpot": 0.4265,
+          "delta": -0.2988,
+          "theta": -0.0062,
+          "vega": 0.0953,
+          "weeksGross": 6.2,
+          "weeksRealistic": 8.3
+        },
+        {
+          "expiry": "2028-01-21",
+          "dte": 534,
+          "strike": 25.0,
+          "iv": 0.9,
+          "cost": 10.02,
+          "costPctSpot": 0.4414,
+          "delta": -0.3052,
+          "theta": -0.0063,
+          "vega": 0.0962,
+          "weeksGross": 6.5,
+          "weeksRealistic": 8.6
+        },
+        {
+          "expiry": "2028-01-21",
+          "dte": 534,
+          "strike": 25.5,
+          "iv": 0.9,
+          "cost": 10.36,
+          "costPctSpot": 0.4564,
+          "delta": -0.3116,
+          "theta": -0.0063,
+          "vega": 0.0971,
+          "weeksGross": 6.7,
+          "weeksRealistic": 8.9
+        },
+        {
+          "expiry": "2028-01-21",
+          "dte": 534,
+          "strike": 26.0,
+          "iv": 0.9,
+          "cost": 10.7,
+          "costPctSpot": 0.4715,
+          "delta": -0.318,
+          "theta": -0.0063,
+          "vega": 0.0979,
+          "weeksGross": 6.9,
+          "weeksRealistic": 9.2
+        },
+        {
+          "expiry": "2028-01-21",
+          "dte": 534,
+          "strike": 26.5,
+          "iv": 0.9,
+          "cost": 11.05,
+          "costPctSpot": 0.4867,
+          "delta": -0.3242,
+          "theta": -0.0063,
+          "vega": 0.0987,
+          "weeksGross": 7.1,
+          "weeksRealistic": 9.5
+        },
+        {
+          "expiry": "2028-01-21",
+          "dte": 534,
+          "strike": 27.0,
+          "iv": 0.9,
+          "cost": 11.4,
+          "costPctSpot": 0.5021,
+          "delta": -0.3304,
+          "theta": -0.0063,
+          "vega": 0.0995,
+          "weeksGross": 7.4,
+          "weeksRealistic": 9.8
+        },
+        {
+          "expiry": "2028-01-21",
+          "dte": 534,
+          "strike": 27.5,
+          "iv": 0.9,
+          "cost": 11.75,
+          "costPctSpot": 0.5176,
+          "delta": -0.3366,
+          "theta": -0.0063,
+          "vega": 0.1002,
+          "weeksGross": 7.6,
+          "weeksRealistic": 10.1
+        },
+        {
+          "expiry": "2028-01-21",
+          "dte": 534,
+          "strike": 28.0,
+          "iv": 0.9,
+          "cost": 12.1,
+          "costPctSpot": 0.5331,
+          "delta": -0.3426,
+          "theta": -0.0063,
+          "vega": 0.1009,
+          "weeksGross": 7.8,
+          "weeksRealistic": 10.4
+        }
+      ],
+      "weeklyCandidates": [
+        {
+          "strike": 17.0,
+          "expiry": "2026-08-14",
+          "dte": 9,
+          "premium": 0.06,
+          "premiumPctSpot": 0.0029,
+          "delta": -0.0387,
+          "gamma": 0.02139,
+          "theta": -0.0182,
+          "vega": 0.003,
+          "thetaCoverage": 1.1,
+          "breakeven": 16.94,
+          "breakevenPct": -0.254
+        },
+        {
+          "strike": 17.5,
+          "expiry": "2026-08-14",
+          "dte": 9,
+          "premium": 0.1,
+          "premiumPctSpot": 0.0043,
+          "delta": -0.055,
+          "gamma": 0.02837,
+          "theta": -0.0241,
+          "vega": 0.004,
+          "thetaCoverage": 1.5,
+          "breakeven": 17.4,
+          "breakevenPct": -0.2334
+        },
+        {
+          "strike": 18.0,
+          "expiry": "2026-08-14",
+          "dte": 9,
+          "premium": 0.14,
+          "premiumPctSpot": 0.0063,
+          "delta": -0.0756,
+          "gamma": 0.03633,
+          "theta": -0.0308,
+          "vega": 0.0051,
+          "thetaCoverage": 1.9,
+          "breakeven": 17.86,
+          "breakevenPct": -0.2133
+        },
+        {
+          "strike": 18.5,
+          "expiry": "2026-08-14",
+          "dte": 9,
+          "premium": 0.2,
+          "premiumPctSpot": 0.0089,
+          "delta": -0.1009,
+          "gamma": 0.04505,
+          "theta": -0.0382,
+          "vega": 0.0063,
+          "thetaCoverage": 2.4,
+          "breakeven": 18.3,
+          "breakevenPct": -0.1939
+        },
+        {
+          "strike": 19.0,
+          "expiry": "2026-08-14",
+          "dte": 9,
+          "premium": 0.28,
+          "premiumPctSpot": 0.0123,
+          "delta": -0.1309,
+          "gamma": 0.05421,
+          "theta": -0.0459,
+          "vega": 0.0076,
+          "thetaCoverage": 2.9,
+          "breakeven": 18.72,
+          "breakevenPct": -0.1753
+        },
+        {
+          "strike": 19.5,
+          "expiry": "2026-08-14",
+          "dte": 9,
+          "premium": 0.37,
+          "premiumPctSpot": 0.0165,
+          "delta": -0.1656,
+          "gamma": 0.06345,
+          "theta": -0.0537,
+          "vega": 0.0089,
+          "thetaCoverage": 3.4,
+          "breakeven": 19.13,
+          "breakevenPct": -0.1574
+        },
+        {
+          "strike": 20.0,
+          "expiry": "2026-08-14",
+          "dte": 9,
+          "premium": 0.49,
+          "premiumPctSpot": 0.0216,
+          "delta": -0.2046,
+          "gamma": 0.07239,
+          "theta": -0.0613,
+          "vega": 0.0101,
+          "thetaCoverage": 3.9,
+          "breakeven": 19.51,
+          "breakevenPct": -0.1406
+        },
+        {
+          "strike": 20.5,
+          "expiry": "2026-08-14",
+          "dte": 9,
+          "premium": 0.63,
+          "premiumPctSpot": 0.0278,
+          "delta": -0.2475,
+          "gamma": 0.08062,
+          "theta": -0.0682,
+          "vega": 0.0113,
+          "thetaCoverage": 4.3,
+          "breakeven": 19.87,
+          "breakevenPct": -0.1247
+        },
+        {
+          "strike": 21.0,
+          "expiry": "2026-08-14",
+          "dte": 9,
+          "premium": 0.8,
+          "premiumPctSpot": 0.0351,
+          "delta": -0.2937,
+          "gamma": 0.08781,
+          "theta": -0.0742,
+          "vega": 0.0123,
+          "thetaCoverage": 4.7,
+          "breakeven": 20.2,
+          "breakevenPct": -0.11
+        },
+        {
+          "strike": 21.5,
+          "expiry": "2026-08-14",
+          "dte": 9,
+          "premium": 0.99,
+          "premiumPctSpot": 0.0435,
+          "delta": -0.3422,
+          "gamma": 0.09368,
+          "theta": -0.0791,
+          "vega": 0.0131,
+          "thetaCoverage": 5.0,
+          "breakeven": 20.51,
+          "breakevenPct": -0.0963
+        },
+        {
+          "strike": 22.0,
+          "expiry": "2026-08-14",
+          "dte": 9,
+          "premium": 1.2,
+          "premiumPctSpot": 0.053,
+          "delta": -0.3923,
+          "gamma": 0.09801,
+          "theta": -0.0826,
+          "vega": 0.0137,
+          "thetaCoverage": 5.2,
+          "breakeven": 20.8,
+          "breakevenPct": -0.0838
+        },
+        {
+          "strike": 22.5,
+          "expiry": "2026-08-14",
+          "dte": 9,
+          "premium": 1.45,
+          "premiumPctSpot": 0.0637,
+          "delta": -0.443,
+          "gamma": 0.10071,
+          "theta": -0.0848,
+          "vega": 0.0141,
+          "thetaCoverage": 5.4,
+          "breakeven": 21.05,
+          "breakevenPct": -0.0725
+        },
+        {
+          "strike": 23.0,
+          "expiry": "2026-08-14",
+          "dte": 9,
+          "premium": 1.71,
+          "premiumPctSpot": 0.0755,
+          "delta": -0.4936,
+          "gamma": 0.10173,
+          "theta": -0.0855,
+          "vega": 0.0142,
+          "thetaCoverage": 5.4,
+          "breakeven": 21.29,
+          "breakevenPct": -0.0623
+        },
+        {
+          "strike": 23.5,
+          "expiry": "2026-08-14",
+          "dte": 9,
+          "premium": 2.01,
+          "premiumPctSpot": 0.0884,
+          "delta": -0.5432,
+          "gamma": 0.10115,
+          "theta": -0.0848,
+          "vega": 0.0141,
+          "thetaCoverage": 5.4,
+          "breakeven": 21.49,
+          "breakevenPct": -0.0532
+        },
+        {
+          "strike": 24.0,
+          "expiry": "2026-08-14",
+          "dte": 9,
+          "premium": 2.32,
+          "premiumPctSpot": 0.1024,
+          "delta": -0.5911,
+          "gamma": 0.09908,
+          "theta": -0.0829,
+          "vega": 0.0138,
+          "thetaCoverage": 5.2,
+          "breakeven": 21.68,
+          "breakevenPct": -0.0451
+        },
+        {
+          "strike": 24.5,
+          "expiry": "2026-08-14",
+          "dte": 9,
+          "premium": 2.66,
+          "premiumPctSpot": 0.1173,
+          "delta": -0.6367,
+          "gamma": 0.09571,
+          "theta": -0.0799,
+          "vega": 0.0134,
+          "thetaCoverage": 5.0,
+          "breakeven": 21.84,
+          "breakevenPct": -0.038
+        },
+        {
+          "strike": 25.0,
+          "expiry": "2026-08-14",
+          "dte": 9,
+          "premium": 3.02,
+          "premiumPctSpot": 0.1331,
+          "delta": -0.6796,
+          "gamma": 0.09125,
+          "theta": -0.0759,
+          "vega": 0.0128,
+          "thetaCoverage": 4.8,
+          "breakeven": 21.98,
+          "breakevenPct": -0.0318
+        },
+        {
+          "strike": 25.5,
+          "expiry": "2026-08-14",
+          "dte": 9,
+          "premium": 3.4,
+          "premiumPctSpot": 0.1498,
+          "delta": -0.7195,
+          "gamma": 0.08593,
+          "theta": -0.0712,
+          "vega": 0.012,
+          "thetaCoverage": 4.5,
+          "breakeven": 22.1,
+          "breakevenPct": -0.0264
+        },
+        {
+          "strike": 26.0,
+          "expiry": "2026-08-14",
+          "dte": 9,
+          "premium": 3.8,
+          "premiumPctSpot": 0.1672,
+          "delta": -0.7561,
+          "gamma": 0.07999,
+          "theta": -0.066,
+          "vega": 0.0112,
+          "thetaCoverage": 4.2,
+          "breakeven": 22.2,
+          "breakevenPct": -0.0218
+        },
+        {
+          "strike": 26.5,
+          "expiry": "2026-08-14",
+          "dte": 9,
+          "premium": 4.21,
+          "premiumPctSpot": 0.1853,
+          "delta": -0.7893,
+          "gamma": 0.07365,
+          "theta": -0.0605,
+          "vega": 0.0103,
+          "thetaCoverage": 3.8,
+          "breakeven": 22.29,
+          "breakevenPct": -0.0179
+        },
+        {
+          "strike": 27.0,
+          "expiry": "2026-08-14",
+          "dte": 9,
+          "premium": 4.63,
+          "premiumPctSpot": 0.2039,
+          "delta": -0.8192,
+          "gamma": 0.06711,
+          "theta": -0.0548,
+          "vega": 0.0094,
+          "thetaCoverage": 3.5,
+          "breakeven": 22.37,
+          "breakevenPct": -0.0145
+        },
+        {
+          "strike": 27.5,
+          "expiry": "2026-08-14",
+          "dte": 9,
+          "premium": 5.07,
+          "premiumPctSpot": 0.2231,
+          "delta": -0.8458,
+          "gamma": 0.06057,
+          "theta": -0.0491,
+          "vega": 0.0085,
+          "thetaCoverage": 3.1,
+          "breakeven": 22.43,
+          "breakevenPct": -0.0117
+        },
+        {
+          "strike": 28.0,
+          "expiry": "2026-08-14",
+          "dte": 9,
+          "premium": 5.51,
+          "premiumPctSpot": 0.2428,
+          "delta": -0.8692,
+          "gamma": 0.05417,
+          "theta": -0.0435,
+          "vega": 0.0076,
+          "thetaCoverage": 2.7,
+          "breakeven": 22.49,
+          "breakevenPct": -0.0093
+        }
+      ],
+      "scenarios": {
+        "1": [
+          {
+            "spot": 13.62,
+            "movePct": -0.4,
+            "ivShock": 0.6,
+            "pnl": -196.9
+          },
+          {
+            "spot": 15.89,
+            "movePct": -0.3,
+            "ivShock": 0.45,
+            "pnl": -134.37
+          },
+          {
+            "spot": 18.16,
+            "movePct": -0.2,
+            "ivShock": 0.3,
+            "pnl": -73.42
+          },
+          {
+            "spot": 19.29,
+            "movePct": -0.15,
+            "ivShock": 0.225,
+            "pnl": -45.61
+          },
+          {
+            "spot": 20.43,
+            "movePct": -0.1,
+            "ivShock": 0.15,
+            "pnl": -21.4
+          },
+          {
+            "spot": 21.56,
+            "movePct": -0.05,
+            "ivShock": 0.075,
+            "pnl": -2.9
+          },
+          {
+            "spot": 22.7,
+            "movePct": 0.0,
+            "ivShock": -0.0,
+            "pnl": 6.95
+          },
+          {
+            "spot": 23.84,
+            "movePct": 0.05,
+            "ivShock": -0.0375,
+            "pnl": 5.25
+          },
+          {
+            "spot": 24.97,
+            "movePct": 0.1,
+            "ivShock": -0.075,
+            "pnl": -7.92
+          },
+          {
+            "spot": 26.1,
+            "movePct": 0.15,
+            "ivShock": -0.1125,
+            "pnl": -31.31
+          },
+          {
+            "spot": 27.24,
+            "movePct": 0.2,
+            "ivShock": -0.15,
+            "pnl": -62.0
+          },
+          {
+            "spot": 29.51,
+            "movePct": 0.3,
+            "ivShock": -0.225,
+            "pnl": -130.43
+          },
+          {
+            "spot": 31.78,
+            "movePct": 0.4,
+            "ivShock": -0.3,
+            "pnl": -193.19
+          }
+        ],
+        "3": [
+          {
+            "spot": 13.62,
+            "movePct": -0.4,
+            "ivShock": 0.6,
+            "pnl": -194.13
+          },
+          {
+            "spot": 15.89,
+            "movePct": -0.3,
+            "ivShock": 0.45,
+            "pnl": -128.72
+          },
+          {
+            "spot": 18.16,
+            "movePct": -0.2,
+            "ivShock": 0.3,
+            "pnl": -63.87
+          },
+          {
+            "spot": 19.29,
+            "movePct": -0.15,
+            "ivShock": 0.225,
+            "pnl": -33.84
+          },
+          {
+            "spot": 20.43,
+            "movePct": -0.1,
+            "ivShock": 0.15,
+            "pnl": -7.5
+          },
+          {
+            "spot": 21.56,
+            "movePct": -0.05,
+            "ivShock": 0.075,
+            "pnl": 12.58
+          },
+          {
+            "spot": 22.7,
+            "movePct": 0.0,
+            "ivShock": -0.0,
+            "pnl": 22.56
+          },
+          {
+            "spot": 23.84,
+            "movePct": 0.05,
+            "ivShock": -0.0375,
+            "pnl": 18.75
+          },
+          {
+            "spot": 24.97,
+            "movePct": 0.1,
+            "ivShock": -0.075,
+            "pnl": 1.32
+          },
+          {
+            "spot": 26.1,
+            "movePct": 0.15,
+            "ivShock": -0.1125,
+            "pnl": -27.26
+          },
+          {
+            "spot": 27.24,
+            "movePct": 0.2,
+            "ivShock": -0.15,
+            "pnl": -62.25
+          },
+          {
+            "spot": 29.51,
+            "movePct": 0.3,
+            "ivShock": -0.225,
+            "pnl": -133.62
+          },
+          {
+            "spot": 31.78,
+            "movePct": 0.4,
+            "ivShock": -0.3,
+            "pnl": -196.36
+          }
+        ],
+        "7": [
+          {
+            "spot": 13.62,
+            "movePct": -0.4,
+            "ivShock": 0.6,
+            "pnl": -188.86
+          },
+          {
+            "spot": 15.89,
+            "movePct": -0.3,
+            "ivShock": 0.45,
+            "pnl": -116.44
+          },
+          {
+            "spot": 18.16,
+            "movePct": -0.2,
+            "ivShock": 0.3,
+            "pnl": -40.55
+          },
+          {
+            "spot": 19.29,
+            "movePct": -0.15,
+            "ivShock": 0.225,
+            "pnl": -3.38
+          },
+          {
+            "spot": 20.43,
+            "movePct": -0.1,
+            "ivShock": 0.15,
+            "pnl": 30.65
+          },
+          {
+            "spot": 21.56,
+            "movePct": -0.05,
+            "ivShock": 0.075,
+            "pnl": 57.0
+          },
+          {
+            "spot": 22.7,
+            "movePct": 0.0,
+            "ivShock": -0.0,
+            "pnl": 66.62
+          },
+          {
+            "spot": 23.84,
+            "movePct": 0.05,
+            "ivShock": -0.0375,
+            "pnl": 50.56
+          },
+          {
+            "spot": 24.97,
+            "movePct": 0.1,
+            "ivShock": -0.075,
+            "pnl": 14.4
+          },
+          {
+            "spot": 26.1,
+            "movePct": 0.15,
+            "ivShock": -0.1125,
+            "pnl": -27.6
+          },
+          {
+            "spot": 27.24,
+            "movePct": 0.2,
+            "ivShock": -0.15,
+            "pnl": -67.76
+          },
+          {
+            "spot": 29.51,
+            "movePct": 0.3,
+            "ivShock": -0.225,
+            "pnl": -140.26
+          },
+          {
+            "spot": 31.78,
+            "movePct": 0.4,
+            "ivShock": -0.3,
+            "pnl": -202.74
+          }
+        ]
+      },
+      "rollChecks": [
+        {
+          "passed": true,
+          "label": "Roll deadline",
+          "detail": "9 DTE, inside the roll window."
+        },
+        {
+          "passed": true,
+          "label": "Harvest target",
+          "detail": "0% of the credit captured, below the 80% target."
+        },
+        {
+          "passed": true,
+          "label": "Strike drift",
+          "detail": "Short delta 0.39."
+        },
+        {
+          "passed": true,
+          "label": "Assignment risk",
+          "detail": "Strike is $22.00 against a higher spot, so the put is out of the money and will not be assigned."
+        }
+      ],
+      "suggestedNextStrike": 22.0
+    },
+    {
+      "symbol": "IBIT",
+      "label": "iShares Bitcoin Trust",
+      "source": "model",
+      "spot": 36.03,
+      "structure": {
+        "contracts": 1,
+        "anchorDebit": null,
+        "shortCredit": 0.38,
+        "legs": [
+          {
+            "label": "anchor",
+            "strike": 36.0,
+            "expiry": "2027-01-15",
+            "dte": 163,
+            "quantity": 1,
+            "iv": 0.421,
+            "price": 3.7197,
+            "intrinsic": 0.0,
+            "extrinsic": 3.7197,
+            "earlyExercise": 0.0513,
+            "delta": -0.4265,
+            "gamma": 0.12106,
+            "theta": -0.0105,
+            "vega": 0.0939,
+            "positionTheta": -1.05,
+            "positionVega": 9.39,
+            "positionDelta": -42.65,
+            "positionValue": 371.97
+          },
+          {
+            "label": "short",
+            "strike": 35.0,
+            "expiry": "2026-08-14",
+            "dte": 9,
+            "quantity": -1,
+            "iv": 0.361,
+            "price": 0.3804,
+            "intrinsic": 0.0,
+            "extrinsic": 0.3804,
+            "earlyExercise": 0.0002,
+            "delta": -0.2909,
+            "gamma": 0.18428,
+            "theta": -0.0379,
+            "vega": 0.0195,
+            "positionTheta": 3.79,
+            "positionVega": -1.95,
+            "positionDelta": 29.09,
+            "positionValue": -38.04
+          }
+        ],
+        "net": {
+          "delta": -13.55,
+          "gamma": -6.3224,
+          "theta": 2.74,
+          "vega": 7.44,
+          "value": 333.93,
+          "shortTheta": 3.79,
+          "longTheta": -1.05,
+          "thetaRatio": 3.6
+        }
+      },
+      "atmWeeklyPremium": 0.8,
+      "termStructure": {
+        "shortIv": 0.361,
+        "anchorIv": 0.421,
+        "edge": -0.06,
+        "shape": "contango",
+        "verdict": "Front volatility is cheaper than the anchor's. Every roll sells vol for less than the anchor cost, so the surface works against this calendar."
+      },
+      "volBeta": 0.7,
+      "anchorCandidates": [
+        {
+          "expiry": "2027-01-15",
+          "dte": 163,
+          "strike": 27.0,
+          "iv": 0.421,
+          "cost": 0.61,
+          "costPctSpot": 0.0168,
+          "delta": -0.1094,
+          "theta": -0.0053,
+          "vega": 0.0451,
+          "weeksGross": 0.8,
+          "weeksRealistic": 1.0
+        },
+        {
+          "expiry": "2027-01-15",
+          "dte": 163,
+          "strike": 28.0,
+          "iv": 0.421,
+          "cost": 0.79,
+          "costPctSpot": 0.022,
+          "delta": -0.1356,
+          "theta": -0.0061,
+          "vega": 0.0524,
+          "weeksGross": 1.0,
+          "weeksRealistic": 1.3
+        },
+        {
+          "expiry": "2027-01-15",
+          "dte": 163,
+          "strike": 29.0,
+          "iv": 0.421,
+          "cost": 1.01,
+          "costPctSpot": 0.0281,
+          "delta": -0.1646,
+          "theta": -0.0069,
+          "vega": 0.0597,
+          "weeksGross": 1.3,
+          "weeksRealistic": 1.7
+        },
+        {
+          "expiry": "2027-01-15",
+          "dte": 163,
+          "strike": 30.0,
+          "iv": 0.421,
+          "cost": 1.27,
+          "costPctSpot": 0.0353,
+          "delta": -0.1962,
+          "theta": -0.0077,
+          "vega": 0.0666,
+          "weeksGross": 1.6,
+          "weeksRealistic": 2.1
+        },
+        {
+          "expiry": "2027-01-15",
+          "dte": 163,
+          "strike": 31.0,
+          "iv": 0.421,
+          "cost": 1.57,
+          "costPctSpot": 0.0435,
+          "delta": -0.2301,
+          "theta": -0.0084,
+          "vega": 0.0731,
+          "weeksGross": 2.0,
+          "weeksRealistic": 2.6
+        },
+        {
+          "expiry": "2027-01-15",
+          "dte": 163,
+          "strike": 32.0,
+          "iv": 0.421,
+          "cost": 1.91,
+          "costPctSpot": 0.0529,
+          "delta": -0.2657,
+          "theta": -0.0089,
+          "vega": 0.079,
+          "weeksGross": 2.4,
+          "weeksRealistic": 3.2
+        },
+        {
+          "expiry": "2027-01-15",
+          "dte": 163,
+          "strike": 33.0,
+          "iv": 0.421,
+          "cost": 2.29,
+          "costPctSpot": 0.0635,
+          "delta": -0.3028,
+          "theta": -0.0094,
+          "vega": 0.0841,
+          "weeksGross": 2.9,
+          "weeksRealistic": 3.8
+        },
+        {
+          "expiry": "2027-01-15",
+          "dte": 163,
+          "strike": 34.0,
+          "iv": 0.421,
+          "cost": 2.71,
+          "costPctSpot": 0.0751,
+          "delta": -0.3408,
+          "theta": -0.0098,
+          "vega": 0.0883,
+          "weeksGross": 3.4,
+          "weeksRealistic": 4.5
+        },
+        {
+          "expiry": "2027-01-15",
+          "dte": 163,
+          "strike": 35.0,
+          "iv": 0.421,
+          "cost": 3.17,
+          "costPctSpot": 0.0879,
+          "delta": -0.3793,
+          "theta": -0.01,
+          "vega": 0.0916,
+          "weeksGross": 4.0,
+          "weeksRealistic": 5.3
+        },
+        {
+          "expiry": "2027-01-15",
+          "dte": 163,
+          "strike": 36.0,
+          "iv": 0.421,
+          "cost": 3.67,
+          "costPctSpot": 0.1018,
+          "delta": -0.418,
+          "theta": -0.0101,
+          "vega": 0.094,
+          "weeksGross": 4.6,
+          "weeksRealistic": 6.1
+        },
+        {
+          "expiry": "2027-01-15",
+          "dte": 163,
+          "strike": 37.0,
+          "iv": 0.421,
+          "cost": 4.21,
+          "costPctSpot": 0.1168,
+          "delta": -0.4563,
+          "theta": -0.0101,
+          "vega": 0.0955,
+          "weeksGross": 5.3,
+          "weeksRealistic": 7.0
+        },
+        {
+          "expiry": "2027-01-15",
+          "dte": 163,
+          "strike": 38.0,
+          "iv": 0.421,
+          "cost": 4.78,
+          "costPctSpot": 0.1328,
+          "delta": -0.494,
+          "theta": -0.0099,
+          "vega": 0.096,
+          "weeksGross": 6.0,
+          "weeksRealistic": 8.0
+        },
+        {
+          "expiry": "2027-01-15",
+          "dte": 163,
+          "strike": 39.0,
+          "iv": 0.421,
+          "cost": 5.4,
+          "costPctSpot": 0.1498,
+          "delta": -0.5308,
+          "theta": -0.0097,
+          "vega": 0.0958,
+          "weeksGross": 6.8,
+          "weeksRealistic": 9.0
+        },
+        {
+          "expiry": "2027-01-15",
+          "dte": 163,
+          "strike": 40.0,
+          "iv": 0.421,
+          "cost": 6.04,
+          "costPctSpot": 0.1677,
+          "delta": -0.5665,
+          "theta": -0.0093,
+          "vega": 0.0947,
+          "weeksGross": 7.6,
+          "weeksRealistic": 10.1
+        },
+        {
+          "expiry": "2027-01-15",
+          "dte": 163,
+          "strike": 41.0,
+          "iv": 0.421,
+          "cost": 6.72,
+          "costPctSpot": 0.1864,
+          "delta": -0.6007,
+          "theta": -0.0089,
+          "vega": 0.093,
+          "weeksGross": 8.4,
+          "weeksRealistic": 11.2
+        },
+        {
+          "expiry": "2027-01-15",
+          "dte": 163,
+          "strike": 42.0,
+          "iv": 0.421,
+          "cost": 7.42,
+          "costPctSpot": 0.206,
+          "delta": -0.6334,
+          "theta": -0.0084,
+          "vega": 0.0906,
+          "weeksGross": 9.3,
+          "weeksRealistic": 12.4
+        },
+        {
+          "expiry": "2027-01-15",
+          "dte": 163,
+          "strike": 43.0,
+          "iv": 0.421,
+          "cost": 8.16,
+          "costPctSpot": 0.2264,
+          "delta": -0.6644,
+          "theta": -0.0078,
+          "vega": 0.0878,
+          "weeksGross": 10.2,
+          "weeksRealistic": 13.7
+        },
+        {
+          "expiry": "2027-01-15",
+          "dte": 163,
+          "strike": 44.0,
+          "iv": 0.421,
+          "cost": 8.92,
+          "costPctSpot": 0.2475,
+          "delta": -0.6936,
+          "theta": -0.0072,
+          "vega": 0.0845,
+          "weeksGross": 11.2,
+          "weeksRealistic": 14.9
+        },
+        {
+          "expiry": "2027-01-15",
+          "dte": 163,
+          "strike": 45.0,
+          "iv": 0.421,
+          "cost": 9.7,
+          "costPctSpot": 0.2692,
+          "delta": -0.7211,
+          "theta": -0.0065,
+          "vega": 0.0809,
+          "weeksGross": 12.2,
+          "weeksRealistic": 16.2
+        },
+        {
+          "expiry": "2028-01-21",
+          "dte": 534,
+          "strike": 27.0,
+          "iv": 0.478,
+          "cost": 2.89,
+          "costPctSpot": 0.0801,
+          "delta": -0.1869,
+          "theta": -0.0042,
+          "vega": 0.1171,
+          "weeksGross": 3.6,
+          "weeksRealistic": 4.8
+        },
+        {
+          "expiry": "2028-01-21",
+          "dte": 534,
+          "strike": 28.0,
+          "iv": 0.478,
+          "cost": 3.26,
+          "costPctSpot": 0.0903,
+          "delta": -0.2043,
+          "theta": -0.0044,
+          "vega": 0.1236,
+          "weeksGross": 4.1,
+          "weeksRealistic": 5.4
+        },
+        {
+          "expiry": "2028-01-21",
+          "dte": 534,
+          "strike": 29.0,
+          "iv": 0.478,
+          "cost": 3.65,
+          "costPctSpot": 0.1012,
+          "delta": -0.2219,
+          "theta": -0.0045,
+          "vega": 0.1297,
+          "weeksGross": 4.6,
+          "weeksRealistic": 6.1
+        },
+        {
+          "expiry": "2028-01-21",
+          "dte": 534,
+          "strike": 30.0,
+          "iv": 0.478,
+          "cost": 4.06,
+          "costPctSpot": 0.1126,
+          "delta": -0.2398,
+          "theta": -0.0047,
+          "vega": 0.1354,
+          "weeksGross": 5.1,
+          "weeksRealistic": 6.8
+        },
+        {
+          "expiry": "2028-01-21",
+          "dte": 534,
+          "strike": 31.0,
+          "iv": 0.478,
+          "cost": 4.49,
+          "costPctSpot": 0.1247,
+          "delta": -0.2577,
+          "theta": -0.0048,
+          "vega": 0.1407,
+          "weeksGross": 5.6,
+          "weeksRealistic": 7.5
+        },
+        {
+          "expiry": "2028-01-21",
+          "dte": 534,
+          "strike": 32.0,
+          "iv": 0.478,
+          "cost": 4.95,
+          "costPctSpot": 0.1373,
+          "delta": -0.2758,
+          "theta": -0.0049,
+          "vega": 0.1456,
+          "weeksGross": 6.2,
+          "weeksRealistic": 8.3
+        },
+        {
+          "expiry": "2028-01-21",
+          "dte": 534,
+          "strike": 33.0,
+          "iv": 0.478,
+          "cost": 5.42,
+          "costPctSpot": 0.1505,
+          "delta": -0.2938,
+          "theta": -0.005,
+          "vega": 0.1501,
+          "weeksGross": 6.8,
+          "weeksRealistic": 9.1
+        },
+        {
+          "expiry": "2028-01-21",
+          "dte": 534,
+          "strike": 34.0,
+          "iv": 0.478,
+          "cost": 5.92,
+          "costPctSpot": 0.1642,
+          "delta": -0.3119,
+          "theta": -0.005,
+          "vega": 0.1541,
+          "weeksGross": 7.4,
+          "weeksRealistic": 9.9
+        },
+        {
+          "expiry": "2028-01-21",
+          "dte": 534,
+          "strike": 35.0,
+          "iv": 0.478,
+          "cost": 6.43,
+          "costPctSpot": 0.1785,
+          "delta": -0.3298,
+          "theta": -0.0051,
+          "vega": 0.1578,
+          "weeksGross": 8.1,
+          "weeksRealistic": 10.8
+        },
+        {
+          "expiry": "2028-01-21",
+          "dte": 534,
+          "strike": 36.0,
+          "iv": 0.478,
+          "cost": 6.96,
+          "costPctSpot": 0.1932,
+          "delta": -0.3476,
+          "theta": -0.0051,
+          "vega": 0.161,
+          "weeksGross": 8.7,
+          "weeksRealistic": 11.7
+        },
+        {
+          "expiry": "2028-01-21",
+          "dte": 534,
+          "strike": 37.0,
+          "iv": 0.478,
+          "cost": 7.51,
+          "costPctSpot": 0.2085,
+          "delta": -0.3653,
+          "theta": -0.0051,
+          "vega": 0.1639,
+          "weeksGross": 9.4,
+          "weeksRealistic": 12.6
+        },
+        {
+          "expiry": "2028-01-21",
+          "dte": 534,
+          "strike": 38.0,
+          "iv": 0.478,
+          "cost": 8.08,
+          "costPctSpot": 0.2243,
+          "delta": -0.3828,
+          "theta": -0.005,
+          "vega": 0.1663,
+          "weeksGross": 10.1,
+          "weeksRealistic": 13.5
+        },
+        {
+          "expiry": "2028-01-21",
+          "dte": 534,
+          "strike": 39.0,
+          "iv": 0.478,
+          "cost": 8.66,
+          "costPctSpot": 0.2405,
+          "delta": -0.4,
+          "theta": -0.005,
+          "vega": 0.1684,
+          "weeksGross": 10.9,
+          "weeksRealistic": 14.5
+        },
+        {
+          "expiry": "2028-01-21",
+          "dte": 534,
+          "strike": 40.0,
+          "iv": 0.478,
+          "cost": 9.26,
+          "costPctSpot": 0.2571,
+          "delta": -0.417,
+          "theta": -0.005,
+          "vega": 0.1701,
+          "weeksGross": 11.6,
+          "weeksRealistic": 15.5
+        },
+        {
+          "expiry": "2028-01-21",
+          "dte": 534,
+          "strike": 41.0,
+          "iv": 0.478,
+          "cost": 9.88,
+          "costPctSpot": 0.2742,
+          "delta": -0.4338,
+          "theta": -0.0049,
+          "vega": 0.1715,
+          "weeksGross": 12.4,
+          "weeksRealistic": 16.5
+        },
+        {
+          "expiry": "2028-01-21",
+          "dte": 534,
+          "strike": 42.0,
+          "iv": 0.478,
+          "cost": 10.51,
+          "costPctSpot": 0.2916,
+          "delta": -0.4502,
+          "theta": -0.0048,
+          "vega": 0.1725,
+          "weeksGross": 13.2,
+          "weeksRealistic": 17.6
+        },
+        {
+          "expiry": "2028-01-21",
+          "dte": 534,
+          "strike": 43.0,
+          "iv": 0.478,
+          "cost": 11.15,
+          "costPctSpot": 0.3095,
+          "delta": -0.4664,
+          "theta": -0.0047,
+          "vega": 0.1732,
+          "weeksGross": 14.0,
+          "weeksRealistic": 18.7
+        },
+        {
+          "expiry": "2028-01-21",
+          "dte": 534,
+          "strike": 44.0,
+          "iv": 0.478,
+          "cost": 11.81,
+          "costPctSpot": 0.3277,
+          "delta": -0.4822,
+          "theta": -0.0046,
+          "vega": 0.1737,
+          "weeksGross": 14.8,
+          "weeksRealistic": 19.8
+        },
+        {
+          "expiry": "2028-01-21",
+          "dte": 534,
+          "strike": 45.0,
+          "iv": 0.478,
+          "cost": 12.48,
+          "costPctSpot": 0.3463,
+          "delta": -0.4977,
+          "theta": -0.0044,
+          "vega": 0.1739,
+          "weeksGross": 15.7,
+          "weeksRealistic": 20.9
+        }
+      ],
+      "weeklyCandidates": [
+        {
+          "strike": 27.0,
+          "expiry": "2026-08-14",
+          "dte": 9,
+          "premium": 0.0,
+          "premiumPctSpot": 0.0,
+          "delta": -0.0,
+          "gamma": 0.0,
+          "theta": -0.0,
+          "vega": 0.0,
+          "thetaCoverage": 0.0,
+          "breakeven": 27.0,
+          "breakevenPct": -0.2506
+        },
+        {
+          "strike": 28.0,
+          "expiry": "2026-08-14",
+          "dte": 9,
+          "premium": 0.0,
+          "premiumPctSpot": 0.0,
+          "delta": -0.0,
+          "gamma": 1e-05,
+          "theta": -0.0,
+          "vega": 0.0,
+          "thetaCoverage": 0.0,
+          "breakeven": 28.0,
+          "breakevenPct": -0.2229
+        },
+        {
+          "strike": 29.0,
+          "expiry": "2026-08-14",
+          "dte": 9,
+          "premium": 0.0,
+          "premiumPctSpot": 0.0,
+          "delta": -0.0001,
+          "gamma": 0.00011,
+          "theta": -0.0,
+          "vega": 0.0,
+          "thetaCoverage": 0.0,
+          "breakeven": 29.0,
+          "breakevenPct": -0.1951
+        },
+        {
+          "strike": 30.0,
+          "expiry": "2026-08-14",
+          "dte": 9,
+          "premium": 0.0,
+          "premiumPctSpot": 0.0,
+          "delta": -0.0005,
+          "gamma": 0.00091,
+          "theta": -0.0002,
+          "vega": 0.0001,
+          "thetaCoverage": 0.0,
+          "breakeven": 30.0,
+          "breakevenPct": -0.1674
+        },
+        {
+          "strike": 31.0,
+          "expiry": "2026-08-14",
+          "dte": 9,
+          "premium": 0.0,
+          "premiumPctSpot": 0.0001,
+          "delta": -0.0035,
+          "gamma": 0.00513,
+          "theta": -0.0012,
+          "vega": 0.0006,
+          "thetaCoverage": 0.1,
+          "breakeven": 31.0,
+          "breakevenPct": -0.1397
+        },
+        {
+          "strike": 32.0,
+          "expiry": "2026-08-14",
+          "dte": 9,
+          "premium": 0.01,
+          "premiumPctSpot": 0.0003,
+          "delta": -0.0162,
+          "gamma": 0.01986,
+          "theta": -0.0045,
+          "vega": 0.0023,
+          "thetaCoverage": 0.4,
+          "breakeven": 31.99,
+          "breakevenPct": -0.1122
+        },
+        {
+          "strike": 33.0,
+          "expiry": "2026-08-14",
+          "dte": 9,
+          "premium": 0.05,
+          "premiumPctSpot": 0.0014,
+          "delta": -0.0553,
+          "gamma": 0.05471,
+          "theta": -0.0125,
+          "vega": 0.0063,
+          "thetaCoverage": 1.2,
+          "breakeven": 32.95,
+          "breakevenPct": -0.0855
+        },
+        {
+          "strike": 34.0,
+          "expiry": "2026-08-14",
+          "dte": 9,
+          "premium": 0.15,
+          "premiumPctSpot": 0.0042,
+          "delta": -0.1426,
+          "gamma": 0.11034,
+          "theta": -0.025,
+          "vega": 0.0128,
+          "thetaCoverage": 2.4,
+          "breakeven": 33.85,
+          "breakevenPct": -0.0606
+        },
+        {
+          "strike": 35.0,
+          "expiry": "2026-08-14",
+          "dte": 9,
+          "premium": 0.38,
+          "premiumPctSpot": 0.0106,
+          "delta": -0.2886,
+          "gamma": 0.16722,
+          "theta": -0.0376,
+          "vega": 0.0193,
+          "thetaCoverage": 3.6,
+          "breakeven": 34.62,
+          "breakevenPct": -0.0391
+        },
+        {
+          "strike": 36.0,
+          "expiry": "2026-08-14",
+          "dte": 9,
+          "premium": 0.78,
+          "premiumPctSpot": 0.0217,
+          "delta": -0.4759,
+          "gamma": 0.19497,
+          "theta": -0.0432,
+          "vega": 0.0225,
+          "thetaCoverage": 4.1,
+          "breakeven": 35.22,
+          "breakevenPct": -0.0225
+        },
+        {
+          "strike": 37.0,
+          "expiry": "2026-08-14",
+          "dte": 9,
+          "premium": 1.37,
+          "premiumPctSpot": 0.0382,
+          "delta": -0.6638,
+          "gamma": 0.17862,
+          "theta": -0.0386,
+          "vega": 0.0206,
+          "thetaCoverage": 3.7,
+          "breakeven": 35.63,
+          "breakevenPct": -0.0112
+        },
+        {
+          "strike": 38.0,
+          "expiry": "2026-08-14",
+          "dte": 9,
+          "premium": 2.13,
+          "premiumPctSpot": 0.0593,
+          "delta": -0.8142,
+          "gamma": 0.13106,
+          "theta": -0.0269,
+          "vega": 0.0151,
+          "thetaCoverage": 2.6,
+          "breakeven": 35.87,
+          "breakevenPct": -0.0046
+        },
+        {
+          "strike": 39.0,
+          "expiry": "2026-08-14",
+          "dte": 9,
+          "premium": 3.01,
+          "premiumPctSpot": 0.0836,
+          "delta": -0.9117,
+          "gamma": 0.07836,
+          "theta": -0.0142,
+          "vega": 0.0091,
+          "thetaCoverage": 1.4,
+          "breakeven": 35.99,
+          "breakevenPct": -0.0012
+        },
+        {
+          "strike": 40.0,
+          "expiry": "2026-08-14",
+          "dte": 9,
+          "premium": 3.96,
+          "premiumPctSpot": 0.1099,
+          "delta": -0.9639,
+          "gamma": 0.03878,
+          "theta": -0.0047,
+          "vega": 0.0045,
+          "thetaCoverage": 0.5,
+          "breakeven": 36.04,
+          "breakevenPct": 0.0003
+        },
+        {
+          "strike": 41.0,
+          "expiry": "2026-08-14",
+          "dte": 9,
+          "premium": 4.94,
+          "premiumPctSpot": 0.1371,
+          "delta": -0.9873,
+          "gamma": 0.01611,
+          "theta": 0.0007,
+          "vega": 0.0019,
+          "thetaCoverage": 0.1,
+          "breakeven": 36.06,
+          "breakevenPct": 0.0009
+        },
+        {
+          "strike": 42.0,
+          "expiry": "2026-08-14",
+          "dte": 9,
+          "premium": 5.93,
+          "premiumPctSpot": 0.1646,
+          "delta": -0.9961,
+          "gamma": 0.0057,
+          "theta": 0.0033,
+          "vega": 0.0007,
+          "thetaCoverage": 0.3,
+          "breakeven": 36.07,
+          "breakevenPct": 0.0011
+        },
+        {
+          "strike": 43.0,
+          "expiry": "2026-08-14",
+          "dte": 9,
+          "premium": 6.93,
+          "premiumPctSpot": 0.1923,
+          "delta": -0.9989,
+          "gamma": 0.00173,
+          "theta": 0.0043,
+          "vega": 0.0002,
+          "thetaCoverage": 0.4,
+          "breakeven": 36.07,
+          "breakevenPct": 0.0012
+        },
+        {
+          "strike": 44.0,
+          "expiry": "2026-08-14",
+          "dte": 9,
+          "premium": 7.93,
+          "premiumPctSpot": 0.22,
+          "delta": -0.9997,
+          "gamma": 0.00046,
+          "theta": 0.0047,
+          "vega": 0.0001,
+          "thetaCoverage": 0.4,
+          "breakeven": 36.07,
+          "breakevenPct": 0.0012
+        },
+        {
+          "strike": 45.0,
+          "expiry": "2026-08-14",
+          "dte": 9,
+          "premium": 8.93,
+          "premiumPctSpot": 0.2477,
+          "delta": -0.9999,
+          "gamma": 0.00011,
+          "theta": 0.0049,
+          "vega": 0.0,
+          "thetaCoverage": 0.5,
+          "breakeven": 36.07,
+          "breakevenPct": 0.0012
+        }
+      ],
+      "scenarios": {
+        "1": [
+          {
+            "spot": 21.62,
+            "movePct": -0.4,
+            "ivShock": 0.28,
+            "pnl": -250.04
+          },
+          {
+            "spot": 25.22,
+            "movePct": -0.3,
+            "ivShock": 0.21,
+            "pnl": -204.08
+          },
+          {
+            "spot": 28.82,
+            "movePct": -0.2,
+            "ivShock": 0.14,
+            "pnl": -130.12
+          },
+          {
+            "spot": 30.63,
+            "movePct": -0.15,
+            "ivShock": 0.105,
+            "pnl": -82.98
+          },
+          {
+            "spot": 32.43,
+            "movePct": -0.1,
+            "ivShock": 0.07,
+            "pnl": -34.15
+          },
+          {
+            "spot": 34.23,
+            "movePct": -0.05,
+            "ivShock": 0.035,
+            "pnl": 2.9
+          },
+          {
+            "spot": 36.03,
+            "movePct": 0.0,
+            "ivShock": -0.0,
+            "pnl": 2.83
+          },
+          {
+            "spot": 37.83,
+            "movePct": 0.05,
+            "ivShock": -0.0175,
+            "pnl": -43.16
+          },
+          {
+            "spot": 39.63,
+            "movePct": 0.1,
+            "ivShock": -0.035,
+            "pnl": -103.89
+          },
+          {
+            "spot": 41.43,
+            "movePct": 0.15,
+            "ivShock": -0.0525,
+            "pnl": -157.3
+          },
+          {
+            "spot": 43.24,
+            "movePct": 0.2,
+            "ivShock": -0.07,
+            "pnl": -200.79
+          },
+          {
+            "spot": 46.84,
+            "movePct": 0.3,
+            "ivShock": -0.105,
+            "pnl": -262.25
+          },
+          {
+            "spot": 50.44,
+            "movePct": 0.4,
+            "ivShock": -0.14,
+            "pnl": -297.66
+          }
+        ],
+        "3": [
+          {
+            "spot": 21.62,
+            "movePct": -0.4,
+            "ivShock": 0.28,
+            "pnl": -250.8
+          },
+          {
+            "spot": 25.22,
+            "movePct": -0.3,
+            "ivShock": 0.21,
+            "pnl": -205.31
+          },
+          {
+            "spot": 28.82,
+            "movePct": -0.2,
+            "ivShock": 0.14,
+            "pnl": -131.14
+          },
+          {
+            "spot": 30.63,
+            "movePct": -0.15,
+            "ivShock": 0.105,
+            "pnl": -82.81
+          },
+          {
+            "spot": 32.43,
+            "movePct": -0.1,
+            "ivShock": 0.07,
+            "pnl": -31.17
+          },
+          {
+            "spot": 34.23,
+            "movePct": -0.05,
+            "ivShock": 0.035,
+            "pnl": 9.75
+          },
+          {
+            "spot": 36.03,
+            "movePct": 0.0,
+            "ivShock": -0.0,
+            "pnl": 9.06
+          },
+          {
+            "spot": 37.83,
+            "movePct": 0.05,
+            "ivShock": -0.0175,
+            "pnl": -43.03
+          },
+          {
+            "spot": 39.63,
+            "movePct": 0.1,
+            "ivShock": -0.035,
+            "pnl": -105.86
+          },
+          {
+            "spot": 41.43,
+            "movePct": 0.15,
+            "ivShock": -0.0525,
+            "pnl": -159.25
+          },
+          {
+            "spot": 43.24,
+            "movePct": 0.2,
+            "ivShock": -0.07,
+            "pnl": -202.58
+          },
+          {
+            "spot": 46.84,
+            "movePct": 0.3,
+            "ivShock": -0.105,
+            "pnl": -263.61
+          },
+          {
+            "spot": 50.44,
+            "movePct": 0.4,
+            "ivShock": -0.14,
+            "pnl": -298.57
+          }
+        ],
+        "7": [
+          {
+            "spot": 21.62,
+            "movePct": -0.4,
+            "ivShock": 0.28,
+            "pnl": -252.35
+          },
+          {
+            "spot": 25.22,
+            "movePct": -0.3,
+            "ivShock": 0.21,
+            "pnl": -207.88
+          },
+          {
+            "spot": 28.82,
+            "movePct": -0.2,
+            "ivShock": 0.14,
+            "pnl": -133.95
+          },
+          {
+            "spot": 30.63,
+            "movePct": -0.15,
+            "ivShock": 0.105,
+            "pnl": -83.73
+          },
+          {
+            "spot": 32.43,
+            "movePct": -0.1,
+            "ivShock": 0.07,
+            "pnl": -25.45
+          },
+          {
+            "spot": 34.23,
+            "movePct": -0.05,
+            "ivShock": 0.035,
+            "pnl": 28.9
+          },
+          {
+            "spot": 36.03,
+            "movePct": 0.0,
+            "ivShock": -0.0,
+            "pnl": 24.26
+          },
+          {
+            "spot": 37.83,
+            "movePct": 0.05,
+            "ivShock": -0.0175,
+            "pnl": -45.59
+          },
+          {
+            "spot": 39.63,
+            "movePct": 0.1,
+            "ivShock": -0.035,
+            "pnl": -110.0
+          },
+          {
+            "spot": 41.43,
+            "movePct": 0.15,
+            "ivShock": -0.0525,
+            "pnl": -163.19
+          },
+          {
+            "spot": 43.24,
+            "movePct": 0.2,
+            "ivShock": -0.07,
+            "pnl": -206.18
+          },
+          {
+            "spot": 46.84,
+            "movePct": 0.3,
+            "ivShock": -0.105,
+            "pnl": -266.33
+          },
+          {
+            "spot": 50.44,
+            "movePct": 0.4,
+            "ivShock": -0.14,
+            "pnl": -300.35
+          }
+        ]
+      },
+      "rollChecks": [
+        {
+          "passed": true,
+          "label": "Roll deadline",
+          "detail": "9 DTE, inside the roll window."
+        },
+        {
+          "passed": true,
+          "label": "Harvest target",
+          "detail": "-0% of the credit captured, below the 80% target."
+        },
+        {
+          "passed": true,
+          "label": "Strike drift",
+          "detail": "Short delta 0.29."
+        },
+        {
+          "passed": true,
+          "label": "Assignment risk",
+          "detail": "Strike is $35.00 against a higher spot, so the put is out of the money and will not be assigned."
+        }
+      ],
+      "suggestedNextStrike": 36.0
+    }
+  ]
+}

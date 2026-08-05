@@ -1,10 +1,4 @@
-import {
-  ASOF,
-  CAPTURE_RATE,
-  RATE,
-  type Market,
-  type Selection,
-} from "./markets";
+import { CAPTURE_RATE, RATE, type Market, type Selection } from "./markets";
 
 export type Greeks = {
   price: number;
@@ -70,8 +64,8 @@ export function termShift(shock30: number, dte: number): number {
   return shock30 * Math.min(Math.sqrt(30 / Math.max(dte, 1)), 4);
 }
 
-export function daysFrom(iso: string): number {
-  return Math.round((Date.parse(iso) - Date.parse(ASOF)) / 86_400_000);
+export function daysFrom(iso: string, asof: string): number {
+  return Math.round((Date.parse(iso) - Date.parse(asof)) / 86_400_000);
 }
 
 export function fmtDate(iso: string): string {
@@ -121,10 +115,10 @@ export function ivFor(market: Market, expiry: string): number {
   return hit ? hit.iv : market.tenors[market.tenors.length - 1].iv;
 }
 
-export function buildModel(market: Market, sel: Selection) {
+export function buildModel(market: Market, sel: Selection, asof: string) {
   const spot = market.spot;
-  const anchorDte = Math.max(daysFrom(sel.anchorExpiry), 0);
-  const shortDte = Math.max(daysFrom(sel.shortExpiry), 0);
+  const anchorDte = Math.max(daysFrom(sel.anchorExpiry, asof), 0);
+  const shortDte = Math.max(daysFrom(sel.shortExpiry, asof), 0);
   const anchorIv = ivFor(market, sel.anchorExpiry);
   const shortIv = ivFor(market, sel.shortExpiry);
   const mult = 100 * sel.contracts;
@@ -188,6 +182,7 @@ export function buildModel(market: Market, sel: Selection) {
   return {
     market,
     sel,
+    asof,
     spot,
     anchor,
     short,

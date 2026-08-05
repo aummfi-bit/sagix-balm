@@ -7,6 +7,7 @@ import {
   DEFAULTS,
   MARKETS,
   RATE,
+  type Market,
   type Selection,
 } from "@/lib/markets";
 import {
@@ -21,6 +22,10 @@ import {
   usd,
   type Model,
 } from "@/lib/pricing";
+import {
+  deskDataFromSnapshot,
+  type BalmSnapshot,
+} from "@/lib/snapshot";
 import { ScenarioChart } from "./ScenarioChart";
 
 function SelectField({
@@ -36,13 +41,13 @@ function SelectField({
 }) {
   return (
     <label className="flex flex-col gap-1.5 min-w-0">
-      <span className="text-[11px] uppercase tracking-[0.14em] text-[var(--muted)]">
+      <span className="text-[11px] uppercase tracking-[0.14em] text-[var(--text-dim)]">
         {label}
       </span>
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="w-full rounded-md border border-[var(--stroke)] bg-[var(--panel)] px-3 py-2 text-sm text-[var(--ink)] outline-none focus:border-[var(--accent)]"
+        className="w-full rounded-md border border-[var(--border)] bg-[var(--bg-light)] px-3 py-2 text-sm text-[var(--text-strong)] outline-none focus:border-[var(--accent)]"
       >
         {options.map((o) => (
           <option key={o.value} value={o.value}>
@@ -65,20 +70,18 @@ function Stat({
 }) {
   const color =
     tone === "good"
-      ? "text-[var(--good)]"
+      ? "text-[var(--ok)]"
       : tone === "warn"
         ? "text-[var(--warn)]"
         : tone === "bad"
           ? "text-[var(--bad)]"
-          : "text-[var(--ink)]";
+          : "text-[var(--text-strong)]";
   return (
-    <div className="rounded-lg border border-[var(--stroke)] bg-[var(--panel)]/70 px-4 py-3">
-      <div
-        className={`font-mono text-xl tabular-nums tracking-tight ${color}`}
-      >
+    <div className="rounded-md border border-[var(--border)] bg-[var(--bg-light)] px-4 py-3">
+      <div className={`font-mono text-xl tabular-nums tracking-tight ${color}`}>
         {value}
       </div>
-      <div className="mt-1 text-[11px] uppercase tracking-[0.12em] text-[var(--muted)]">
+      <div className="mt-1 text-[11px] uppercase tracking-[0.12em] text-[var(--text-dim)]">
         {label}
       </div>
     </div>
@@ -92,11 +95,11 @@ function Controls({
   model: Model;
   onChange: (next: Selection) => void;
 }) {
-  const { market, sel } = model;
+  const { market, sel, asof } = model;
   const strikes = ladder(market.spot, market.strikeStep);
-  const longTenors = market.tenors.filter((t) => daysFrom(t.expiry) > 60);
+  const longTenors = market.tenors.filter((t) => daysFrom(t.expiry, asof) > 60);
   const shortTenors = market.tenors.filter(
-    (t) => daysFrom(t.expiry) <= 60 && daysFrom(t.expiry) > 0,
+    (t) => daysFrom(t.expiry, asof) <= 60 && daysFrom(t.expiry, asof) > 0,
   );
 
   return (
@@ -107,7 +110,7 @@ function Controls({
         onChange={(v) => onChange({ ...sel, anchorExpiry: v })}
         options={longTenors.map((t) => ({
           value: t.expiry,
-          label: `${fmtDate(t.expiry)} · ${daysFrom(t.expiry)}d · ${pct(t.iv, 0)} IV`,
+          label: `${fmtDate(t.expiry)} · ${daysFrom(t.expiry, asof)}d · ${pct(t.iv, 0)} IV`,
         }))}
       />
       <SelectField
@@ -125,7 +128,7 @@ function Controls({
         onChange={(v) => onChange({ ...sel, shortExpiry: v })}
         options={shortTenors.map((t) => ({
           value: t.expiry,
-          label: `${fmtDate(t.expiry)} · ${daysFrom(t.expiry)}d · ${pct(t.iv, 0)} IV`,
+          label: `${fmtDate(t.expiry)} · ${daysFrom(t.expiry, asof)}d · ${pct(t.iv, 0)} IV`,
         }))}
       />
       <SelectField
@@ -153,21 +156,21 @@ function DataTable({
   rowTone?: Array<"good" | "warn" | "bad" | "info" | undefined>;
 }) {
   const toneDot = {
-    good: "bg-[var(--good)]",
+    good: "bg-[var(--ok)]",
     warn: "bg-[var(--warn)]",
     bad: "bg-[var(--bad)]",
     info: "bg-[var(--accent)]",
   };
 
   return (
-    <div className="overflow-x-auto rounded-lg border border-[var(--stroke)]">
+    <div className="overflow-x-auto rounded-md border border-[var(--border)]">
       <table className="w-full min-w-[640px] text-sm">
         <thead>
-          <tr className="border-b border-[var(--stroke)] bg-[var(--panel)]">
+          <tr className="border-b border-[var(--border)] bg-[var(--bg-light)]">
             {headers.map((h, i) => (
               <th
                 key={h}
-                className={`px-3 py-2 text-[11px] font-medium uppercase tracking-[0.1em] text-[var(--muted)] ${
+                className={`px-3 py-2 text-[11px] font-medium uppercase tracking-[0.1em] text-[var(--text-dim)] ${
                   alignRight?.[i] ? "text-right" : "text-left"
                 }`}
               >
@@ -180,12 +183,12 @@ function DataTable({
           {rows.map((row, ri) => (
             <tr
               key={ri}
-              className="border-b border-[var(--stroke)]/70 last:border-0 odd:bg-[var(--panel)]/40"
+              className="border-b border-[var(--border)] last:border-0 hover:bg-[var(--table-hover)]"
             >
               {row.map((cell, ci) => (
                 <td
                   key={ci}
-                  className={`px-3 py-2 font-mono tabular-nums text-[var(--ink)] ${
+                  className={`px-3 py-2 font-mono tabular-nums text-[var(--text)] ${
                     alignRight?.[ci] ? "text-right" : "text-left"
                   }`}
                 >
@@ -225,17 +228,7 @@ function LegsTable({ model }: { model: Model }) {
         "Theta $/day",
         "Vega $/pt",
       ]}
-      alignRight={[
-        false,
-        true,
-        false,
-        true,
-        true,
-        true,
-        true,
-        true,
-        true,
-      ]}
+      alignRight={[false, true, false, true, true, true, true, true, true]}
       rowTone={["info", "warn", undefined]}
       rows={[
         [
@@ -332,9 +325,9 @@ function StrikeLadder({ model }: { model: Model }) {
         rows={rows.map((r) => r.cells)}
         rowTone={tones}
       />
-      <p className="text-sm text-[var(--muted)]">
+      <p className="text-sm text-[var(--text-dim)]">
         {fmtDate(sel.shortExpiry)} puts at {pct(model.shortIv, 0)} IV. Green
-        rows sit in the 0.30–0.50 delta band; red is past 0.55; amber is your
+        rows sit in the 0.30–0.50 delta band; red is past 0.55; blue is your
         current short.
       </p>
     </div>
@@ -344,7 +337,7 @@ function StrikeLadder({ model }: { model: Model }) {
 function RollChecklist({ model }: { model: Model }) {
   const absDelta = Math.abs(model.short.delta);
   const itm = model.spot < model.sel.shortStrike;
-  const weekday = new Date(`${ASOF}T12:00:00Z`).getUTCDay();
+  const weekday = new Date(`${model.asof}T12:00:00Z`).getUTCDay();
   const pastCutoff = weekday > 3 || weekday === 0;
 
   const checks = [
@@ -404,25 +397,64 @@ function RollChecklist({ model }: { model: Model }) {
 
 export function PutCalendarDesk() {
   const [active, setActive] = useState("GLXY");
+  const [markets, setMarkets] = useState<Market[]>(MARKETS);
   const [selections, setSelections] =
     useState<Record<string, Selection>>(DEFAULTS);
+  const [asof, setAsof] = useState(ASOF);
+  const [updating, setUpdating] = useState(false);
+  const [status, setStatus] = useState<string | null>(null);
+  const [statusTone, setStatusTone] = useState<"ok" | "warn" | "bad">("ok");
 
-  const market = MARKETS.find((m) => m.symbol === active) ?? MARKETS[0];
+  const market = markets.find((m) => m.symbol === active) ?? markets[0];
   const sel = selections[market.symbol] ?? DEFAULTS[market.symbol];
-  const model = useMemo(() => buildModel(market, sel), [market, sel]);
+  const model = useMemo(
+    () => buildModel(market, sel, asof),
+    [market, sel, asof],
+  );
 
   const update = (next: Selection) =>
     setSelections((prev) => ({ ...prev, [market.symbol]: next }));
+
+  async function handleUpdateData() {
+    setUpdating(true);
+    setStatus(null);
+    try {
+      const res = await fetch("/api/update", { method: "POST" });
+      const body = await res.json();
+      if (!res.ok || !body.ok) {
+        setStatusTone("bad");
+        setStatus(body.error ?? body.detail ?? "Update failed");
+        return;
+      }
+      const desk = deskDataFromSnapshot(
+        body.snapshot as BalmSnapshot,
+        body.command as string,
+      );
+      setMarkets(desk.markets);
+      setSelections(desk.selections);
+      setAsof(desk.asof);
+      if (!desk.markets.some((m) => m.symbol === active)) {
+        setActive(desk.markets[0]?.symbol ?? "GLXY");
+      }
+      setStatusTone(body.command === "cached" ? "warn" : "ok");
+      setStatus(body.message ?? `Updated via ${body.command}`);
+    } catch (err) {
+      setStatusTone("bad");
+      setStatus(err instanceof Error ? err.message : "Network error");
+    } finally {
+      setUpdating(false);
+    }
+  }
 
   const weeks = Math.min(Math.ceil(model.weeksRealistic), 20);
   const perWeek = model.weeklyIncome * CAPTURE_RATE;
 
   const termTone =
     model.shape === "backwardation"
-      ? "border-[var(--good)]/40 bg-[var(--good)]/10"
+      ? "border-[var(--ok)]/40 bg-[var(--ok)]/10"
       : model.shape === "contango"
         ? "border-[var(--warn)]/40 bg-[var(--warn)]/10"
-        : "border-[var(--stroke)] bg-[var(--panel)]";
+        : "border-[var(--border)] bg-[var(--bg-light)]";
 
   const termBody =
     model.shape === "backwardation"
@@ -431,38 +463,66 @@ export function PutCalendarDesk() {
         ? `You sell ${pct(model.shortIv, 0)} vol on the weekly but pay ${pct(model.anchorIv, 0)} for the anchor — a ${pct(Math.abs(model.ivEdge), 1)} structural headwind.`
         : `Front and long-dated vol are within ${pct(Math.abs(model.ivEdge), 1)}. No structural edge either way.`;
 
+  const statusColor =
+    statusTone === "ok"
+      ? "text-[var(--ok)]"
+      : statusTone === "warn"
+        ? "text-[var(--warn)]"
+        : "text-[var(--bad)]";
+
   return (
-    <div className="mx-auto w-full max-w-6xl space-y-10 px-4 py-10 sm:px-6 lg:px-8">
-      <header className="space-y-4">
-        <p className="font-[family-name:var(--font-display)] text-sm tracking-[0.28em] uppercase text-[var(--accent)]">
+    <div className="mx-auto w-full max-w-6xl space-y-10 px-4 pb-10 pt-0 sm:px-6 lg:px-8">
+      {/* Top bar — Update data */}
+      <div className="-mx-4 border-b border-[var(--border)] bg-[var(--bg-light)] px-4 py-3 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
+        <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-3">
+          <button
+            type="button"
+            onClick={handleUpdateData}
+            disabled={updating}
+            className="rounded-md bg-[var(--accent)] px-3.5 py-1.5 text-sm font-semibold text-[#0d1117] transition hover:brightness-110 disabled:cursor-wait disabled:opacity-60"
+          >
+            {updating ? "Updating…" : "Update data"}
+          </button>
+          <span className="text-xs text-[var(--text-dim)]">
+            Runs <code className="text-[var(--text)]">balm sync</code>, falls
+            back to <code className="text-[var(--text)]">balm plan</code>
+          </span>
+          {status ? (
+            <span className={`ml-auto text-xs ${statusColor}`}>{status}</span>
+          ) : null}
+        </div>
+      </div>
+
+      <header className="space-y-3 pt-6">
+        <p className="text-sm font-medium tracking-[0.28em] uppercase text-[var(--accent)]">
           sagix balm
         </p>
-        <h1 className="font-[family-name:var(--font-display)] text-4xl leading-tight tracking-tight text-[var(--ink)] sm:text-5xl">
+        <h1 className="text-4xl font-semibold leading-tight tracking-tight text-[var(--text-strong)] sm:text-5xl">
           Put calendar desk
         </h1>
-        <p className="max-w-2xl text-[var(--muted)]">
+        <p className="max-w-2xl text-[var(--text-dim)]">
           Long-dated put anchor financed by weekly short puts. Modeled as of{" "}
-          {fmtDate(ASOF)} at a {pct(RATE, 0)} risk-free rate. Adjust strikes
+          {fmtDate(asof)} at a {pct(RATE, 0)} risk-free rate. Adjust strikes
           and expiries — greeks and scenarios recompute live.
         </p>
       </header>
 
       <div className="flex flex-wrap items-center gap-2">
-        {MARKETS.map((m) => (
+        {markets.map((m) => (
           <button
             key={m.symbol}
             type="button"
             onClick={() => setActive(m.symbol)}
             className={`rounded-md px-3 py-1.5 font-mono text-sm transition ${
               m.symbol === active
-                ? "bg-[var(--accent)] text-[var(--bg)]"
-                : "border border-[var(--stroke)] text-[var(--muted)] hover:text-[var(--ink)]"
+                ? "bg-[var(--accent)] font-semibold text-[#0d1117]"
+                : "border border-[var(--border)] text-[var(--text-dim)] hover:bg-[var(--accent-faint)] hover:text-[var(--text-strong)]"
             }`}
           >
             {m.symbol}
           </button>
         ))}
-        <span className="ml-auto text-xs text-[var(--muted)]">
+        <span className="ml-auto text-xs text-[var(--text-dim)]">
           {market.label} · {market.source}
         </span>
       </div>
@@ -492,15 +552,15 @@ export function PutCalendarDesk() {
         />
       </div>
 
-      <div className={`rounded-lg border px-4 py-3 ${termTone}`}>
-        <div className="text-sm font-medium text-[var(--ink)]">
+      <div className={`rounded-md border px-4 py-3 ${termTone}`}>
+        <div className="text-sm font-medium text-[var(--text-strong)]">
           Volatility term structure: {model.shape}
         </div>
-        <p className="mt-1 text-sm text-[var(--muted)]">{termBody}</p>
+        <p className="mt-1 text-sm text-[var(--text-dim)]">{termBody}</p>
       </div>
 
       <section className="space-y-4">
-        <h2 className="font-[family-name:var(--font-display)] text-2xl text-[var(--ink)]">
+        <h2 className="text-2xl font-semibold text-[var(--text-strong)]">
           Structure
         </h2>
         <Controls model={model} onChange={update} />
@@ -508,11 +568,11 @@ export function PutCalendarDesk() {
       </section>
 
       <section className="space-y-4">
-        <h2 className="font-[family-name:var(--font-display)] text-2xl text-[var(--ink)]">
+        <h2 className="text-2xl font-semibold text-[var(--text-strong)]">
           Paying off the anchor
         </h2>
         <div className="space-y-2">
-          <div className="flex justify-between text-xs text-[var(--muted)]">
+          <div className="flex justify-between text-xs text-[var(--text-dim)]">
             <span>
               {model.weeksRealistic.toFixed(1)} weekly sales to cover the
               anchor
@@ -521,7 +581,7 @@ export function PutCalendarDesk() {
               {usd(perWeek, 0)}/week net vs {usd(model.anchorCost, 0)} debit
             </span>
           </div>
-          <div className="flex h-3 overflow-hidden rounded-full bg-[var(--stroke)]/50">
+          <div className="flex h-3 overflow-hidden rounded-full bg-[var(--border)]">
             {Array.from({ length: weeks }, (_, i) => (
               <div
                 key={i}
@@ -534,7 +594,7 @@ export function PutCalendarDesk() {
               />
             ))}
           </div>
-          <p className="text-sm text-[var(--muted)]">
+          <p className="text-sm text-[var(--text-dim)]">
             Each segment is one weekly sale at {usd(model.weeklyPremium)} per
             share, kept at {pct(CAPTURE_RATE, 0)} after early closes and
             commissions. Gross count is {model.weeksGross.toFixed(1)} weeks at
@@ -544,10 +604,10 @@ export function PutCalendarDesk() {
       </section>
 
       <section className="space-y-4">
-        <h2 className="font-[family-name:var(--font-display)] text-2xl text-[var(--ink)]">
+        <h2 className="text-2xl font-semibold text-[var(--text-strong)]">
           Profit and loss across spot moves
         </h2>
-        <div className="rounded-lg border border-[var(--stroke)] bg-[var(--panel)]/50 p-4">
+        <div className="rounded-md border border-[var(--border)] bg-[var(--bg-light)] p-4">
           <ScenarioChart
             categories={model.moves.map(
               (m) => `${m >= 0 ? "+" : ""}${(m * 100).toFixed(0)}%`,
@@ -556,7 +616,7 @@ export function PutCalendarDesk() {
               {
                 name: "1 day",
                 data: model.scenarioRow(1),
-                color: "var(--muted)",
+                color: "var(--text-dim)",
               },
               {
                 name: "3 days",
@@ -570,11 +630,11 @@ export function PutCalendarDesk() {
               },
             ]}
           />
-          <div className="mt-3 flex flex-wrap gap-4 text-xs text-[var(--muted)]">
+          <div className="mt-3 flex flex-wrap gap-4 text-xs text-[var(--text-dim)]">
             <span>
               <i
                 className="mr-1.5 inline-block h-2 w-2 rounded-full"
-                style={{ background: "var(--muted)" }}
+                style={{ background: "var(--text-dim)" }}
               />
               1 day
             </span>
@@ -594,81 +654,89 @@ export function PutCalendarDesk() {
             </span>
           </div>
         </div>
-        <p className="text-sm text-[var(--muted)]">
+        <p className="text-sm text-[var(--text-dim)]">
           Vol shocked with spot at beta {market.volBeta}, damped by √T across
           the term structure — the short leg reacts far more than the anchor.
         </p>
       </section>
 
       <section className="space-y-4">
-        <h2 className="font-[family-name:var(--font-display)] text-2xl text-[var(--ink)]">
+        <h2 className="text-2xl font-semibold text-[var(--text-strong)]">
           This week&apos;s strike ladder
         </h2>
         <StrikeLadder model={model} />
       </section>
 
       <section className="space-y-4">
-        <h2 className="font-[family-name:var(--font-display)] text-2xl text-[var(--ink)]">
+        <h2 className="text-2xl font-semibold text-[var(--text-strong)]">
           Roll checklist
         </h2>
         <RollChecklist model={model} />
       </section>
 
       <section className="grid gap-4 md:grid-cols-2">
-        <div className="rounded-lg border border-[var(--stroke)] bg-[var(--panel)]/60 p-5">
-          <h3 className="mb-3 font-[family-name:var(--font-display)] text-lg">
+        <div className="rounded-md border border-[var(--border)] bg-[var(--bg-light)] p-5">
+          <h3 className="mb-3 text-lg font-semibold text-[var(--text-strong)]">
             Weekly operating loop
           </h3>
-          <ul className="space-y-2 text-sm text-[var(--muted)]">
+          <ul className="space-y-2 text-sm text-[var(--text-dim)]">
             <li>
-              <strong className="text-[var(--ink)]">Monday.</strong> Mark the
-              anchor and open short. Update banked premium.
+              <strong className="text-[var(--text-strong)]">Monday.</strong>{" "}
+              Mark the anchor and open short. Update banked premium.
             </li>
             <li>
-              <strong className="text-[var(--ink)]">Tue / Wed.</strong> Close
-              once ~80% of credit is captured. Never carry into Thursday.
+              <strong className="text-[var(--text-strong)]">Tue / Wed.</strong>{" "}
+              Close once ~80% of credit is captured. Never carry into Thursday.
             </li>
             <li>
-              <strong className="text-[var(--ink)]">Same session.</strong> Sell
-              next weekly by target delta, not fixed distance from spot.
+              <strong className="text-[var(--text-strong)]">
+                Same session.
+              </strong>{" "}
+              Sell next weekly by target delta, not fixed distance from spot.
             </li>
             <li>
-              <strong className="text-[var(--ink)]">Always.</strong> Mid-price
-              limit orders — wide spreads are a tax on payoff horizon.
+              <strong className="text-[var(--text-strong)]">Always.</strong>{" "}
+              Mid-price limit orders — wide spreads are a tax on payoff horizon.
             </li>
           </ul>
         </div>
-        <div className="rounded-lg border border-[var(--stroke)] bg-[var(--panel)]/60 p-5">
-          <h3 className="mb-3 font-[family-name:var(--font-display)] text-lg">
+        <div className="rounded-md border border-[var(--border)] bg-[var(--bg-light)] p-5">
+          <h3 className="mb-3 text-lg font-semibold text-[var(--text-strong)]">
             What actually goes wrong
           </h3>
-          <ul className="space-y-2 text-sm text-[var(--muted)]">
+          <ul className="space-y-2 text-sm text-[var(--text-dim)]">
             <li>
-              <strong className="text-[var(--ink)]">Sharp rally.</strong> Worst
-              case: anchor loses on delta and vega while credits shrink.
+              <strong className="text-[var(--text-strong)]">
+                Sharp rally.
+              </strong>{" "}
+              Worst case: anchor loses on delta and vega while credits shrink.
             </li>
             <li>
-              <strong className="text-[var(--ink)]">Fast crash.</strong> Short
-              IV spikes more than the anchor; assignment risk rises.
+              <strong className="text-[var(--text-strong)]">
+                Fast crash.
+              </strong>{" "}
+              Short IV spikes more than the anchor; assignment risk rises.
             </li>
             <li>
-              <strong className="text-[var(--ink)]">Grind lower.</strong> Best
-              case — roll strikes down, collect, anchor gains.
+              <strong className="text-[var(--text-strong)]">
+                Grind lower.
+              </strong>{" "}
+              Best case — roll strikes down, collect, anchor gains.
             </li>
             <li>
-              <strong className="text-[var(--ink)]">Assignment.</strong>{" "}
+              <strong className="text-[var(--text-strong)]">
+                Assignment.
+              </strong>{" "}
               Becomes a married put — legitimate, but capital-heavy.
             </li>
           </ul>
         </div>
       </section>
 
-      <footer className="border-t border-[var(--stroke)] pt-6 text-xs text-[var(--muted)]">
+      <footer className="border-t border-[var(--border)] pt-6 text-xs text-[var(--text-dim)]">
         <p>
           Model prices assume mid fills. Not investment advice. Front IV for
-          the selected short is {pct(ivFor(market, sel.shortExpiry), 0)};
-          European Black-Scholes for responsiveness — the Python package also
-          prices American early exercise for assignment risk.
+          the selected short is {pct(ivFor(market, sel.shortExpiry), 0)}.
         </p>
       </footer>
     </div>
