@@ -5,6 +5,12 @@ export const CAPTURE_RATE = 0.75;
 
 export type Tenor = { expiry: string; iv: number };
 
+/**
+ * A market in one contract. `null` on a side means nobody is quoting it, which
+ * is reported as "no quote" rather than filled in from the other side.
+ */
+export type QuoteSides = { bid: number | null; ask: number | null };
+
 export type Market = {
   symbol: string;
   label: string;
@@ -14,6 +20,13 @@ export type Market = {
   volBeta: number;
   source: string;
   tenors: Tenor[];
+  /**
+   * Live two-sided markets keyed `${kind}|${expiry}|${strike}`, present only
+   * after a `balm sync`. The seeded markets below are close snapshots with no
+   * book behind them, so they carry none and every tradable price reads as a
+   * dash until a sync fills them in.
+   */
+  quotes?: Record<string, QuoteSides>;
 };
 
 export type Selection = {
@@ -69,6 +82,23 @@ export const MARKETS: Market[] = [
     ],
   },
 ];
+
+/**
+ * Mirror a put selection onto the call side: the anchor sits at the money and
+ * the weekly one step out, which for calls is a step *above* spot rather than
+ * below. Used the first time the call panel is opened for a market.
+ */
+export function callSelectionFor(
+  market: Market,
+  put: Selection,
+): Selection {
+  const atm = Math.round(market.spot / market.strikeStep) * market.strikeStep;
+  return {
+    ...put,
+    anchorStrike: Number(atm.toFixed(2)),
+    shortStrike: Number((atm + market.strikeStep).toFixed(2)),
+  };
+}
 
 export const DEFAULTS: Record<string, Selection> = {
   GLXY: {

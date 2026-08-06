@@ -84,6 +84,9 @@ dividend_yield = 0.0
 binomial_steps = 240
 strike_window = 0.25
 expirations = 8
+# Pull the call chain as well, so the desk's call panel has real quotes rather
+# than blanks. Doubles the contracts requested per sync.
+include_calls = true
 
 [rules]
 # Monday=0. Never carry an open short weekly past this weekday.

@@ -2,20 +2,34 @@ import {
   DEFAULTS,
   MARKETS,
   type Market,
+  type QuoteSides,
   type Selection,
   type Tenor,
 } from "./markets";
+import { quoteKey } from "./pricing";
 
 export type BalmSnapshot = {
   schemaVersion: number;
   generatedAt: string;
   asof: string;
+  account?: Record<string, number>;
   underlyings: Array<{
     symbol: string;
     label?: string;
     source?: string;
     spot: number;
     volBeta?: number;
+    positions?: Array<{
+      symbol: string;
+      secType: string;
+      quantity: number;
+      avgCost: number;
+      multiplier: number;
+      kind?: string | null;
+      strike?: number | null;
+      expiry?: string | null;
+      exitPrice?: number | null;
+    }>;
     structure?: {
       contracts?: number;
       legs?: Array<{
@@ -23,6 +37,8 @@ export type BalmSnapshot = {
         strike: number;
         expiry: string;
         iv: number;
+        bid?: number | null;
+        ask?: number | null;
       }>;
     };
     termStructure?: {
@@ -34,9 +50,43 @@ export type BalmSnapshot = {
       strike: number;
       iv: number | null;
       kind?: string;
+      bid?: number | null;
+      ask?: number | null;
     }>;
   }>;
 };
+
+type SnapshotUnderlying = BalmSnapshot["underlyings"][number];
+
+/**
+ * Collect the two-sided markets a live sync carried.
+ *
+ * A model snapshot has no book behind it and yields nothing, which is the
+ * correct answer: the desk then shows model values labelled as such instead of
+ * implying prices that were never quoted.
+ */
+function quotesFrom(u: SnapshotUnderlying): Record<string, QuoteSides> | undefined {
+  const out: Record<string, QuoteSides> = {};
+  const add = (
+    kind: string,
+    expiry: string,
+    strike: number,
+    bid?: number | null,
+    ask?: number | null,
+  ) => {
+    if (bid == null && ask == null) return;
+    if (kind !== "put" && kind !== "call") return;
+    out[quoteKey(kind, expiry, strike)] = { bid: bid ?? null, ask: ask ?? null };
+  };
+
+  for (const q of u.chain ?? []) add(q.kind ?? "put", q.expiry, q.strike, q.bid, q.ask);
+  // The traded legs carry their own quote even when the chain is absent. The
+  // tracked campaign is a put calendar, so its legs are puts.
+  for (const l of u.structure?.legs ?? [])
+    add("put", l.expiry, l.strike, l.bid, l.ask);
+
+  return Object.keys(out).length ? out : undefined;
+}
 
 export type DeskData = {
   asof: string;
@@ -124,6 +174,9 @@ export function deskDataFromSnapshot(
           ? `balm sync · ${snap.generatedAt}`
           : `balm plan · ${snap.generatedAt}`,
       tenors: mergeTenors(m.tenors, patches),
+      // Always reassigned, so a model refresh clears stale quotes rather than
+      // leaving yesterday's book attached to today's prices.
+      quotes: quotesFrom(u),
     };
   });
 
@@ -147,6 +200,7 @@ export function deskDataFromSnapshot(
         { expiry: short.expiry, iv: short.iv },
         { expiry: anchor.expiry, iv: anchor.iv },
       ],
+      quotes: quotesFrom(u),
     });
     selections[u.symbol] = {
       anchorExpiry: anchor.expiry,

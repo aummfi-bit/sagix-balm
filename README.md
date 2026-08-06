@@ -13,8 +13,25 @@ Two underlyings, two tabs. Both are configurable — nothing is hardcoded to a t
 
 **Repo:** [github.com/aummfi-bit/sagix-balm](https://github.com/aummfi-bit/sagix-balm)
 
-Interactive Next.js desk lives in [`web/`](web/) — greeks, term-structure callouts,
-scenario chart, strike ladder, and roll checklist. Deployed on Vercel from the `web/` root.
+Interactive Next.js desk lives in [`web/`](web/). Pick a ticker, see what you hold in it,
+then open either calendar:
+
+```
+[GLXY] [IBIT]                 ticker
+┌─ Holdings ──────────────┐   price, shares, stock value, cash, and your option lines
+[▾ Puts] [▸ Calls]            one panel per right, collapsible
+┌─ Put calendar ──────────┐   greeks, term structure, scenarios, ladder, roll checklist
+```
+
+The holdings panel shows the share count and cash from the last `balm sync`, plus any
+option lines you add by hand. Manual lines are stored in your browser and never sent
+anywhere; the balm connection to IBKR is read-only and places no orders.
+
+The calls panel is the same analysis pointed at the other half of the chain — a long-dated
+call anchor financed by weekly short calls. `balm sync` pulls both rights so it has a real
+book behind it; set `model.include_calls = false` to skip the extra market data.
+
+Deployed on Vercel from the `web/` root.
 
 ```bash
 cd web && npm install && npm run dev
@@ -32,6 +49,9 @@ cd web && npm install && npm run dev
 - **Models scenarios properly.** Volatility shocks are damped across the term structure by
   the inverse square root of time, so a crash correctly inflates the weekly you are short
   far more than the anchor you own.
+- **Prices the side you actually trade.** Buys are marked at the ask, sales at the bid, so
+  every cost, credit and valuation is one you could transact at rather than a mid the book
+  never offers. See [Which price](#which-price).
 - **Runs the weekly checklist.** Roll deadline, harvest target, strike drift, assignment
   cushion, and bid/ask spread, each evaluated against the current position.
 
@@ -135,12 +155,41 @@ max_spread_pct = 0.10
 `vol_beta` is deliberately per-underlying. A 60-point volatility shock is realistic for a
 crypto-linked single name and absurd for a broad ETF.
 
-## The canvas
+## Which price
 
-`put-calendar-desk.canvas.tsx` is the interactive front end: two tabs, live strike and
-expiry selection, a scenario chart, a strike ladder, and the roll checklist. It reimplements
-Black-Scholes in TypeScript so it recomputes as you change strikes rather than displaying a
-frozen table.
+Nothing here transacts at the mid, so nothing here is marked at the mid. Each number takes
+the side of the trade it describes:
+
+| Number | Side | Why |
+| --- | --- | --- |
+| Anchor debit, `anchorCandidates[].cost` | **ask** | You buy the anchor |
+| Weekly credit, `weeklyCandidates[].premium`, breakevens | **bid** | You sell the weekly |
+| Anchor mark (`campaign.anchorMark`) | **bid** | Liquidating a long |
+| Open short liability, cost to close, harvest target | **ask** | Buying the short back |
+| A holding's value now | **bid** long, **ask** short | Whichever side closes it |
+| `net.liquidationValue`, `campaign.netLiquidation` | both | Bid on the long, ask on the short |
+| Underlying spot | mid | A model reference, not a position being traded |
+
+On a weekly quoting 25% wide, marking both legs at the mid overstates the campaign by half
+a spread on each — and in the flattering direction both times.
+
+**Where there is no quote, there is no price.** The tradable fields go `null`, the desk
+shows a dash, and everything derived from them — breakevens, payoff horizons, cost as a
+share of spot — goes with them rather than being estimated. The model's own value travels
+alongside under a `theo` name and in the desk's `Model` column, where it can be read as
+what it is: a valuation, not a fill.
+
+`balm plan` has no market data behind it, so a model snapshot quotes nothing at all. In a
+live `sync` a missing quote fails the liquidity check and leaves the harvest target
+unmeasurable, because an exit that cannot be priced is a finding, not a detail.
+
+## The desk
+
+[`web/src/components/CalendarDesk.tsx`](web/src/components/CalendarDesk.tsx) is the front
+end described above, and [`web/src/lib/pricing.ts`](web/src/lib/pricing.ts) reimplements
+Black-Scholes for both rights in TypeScript so the greeks recompute as you change strikes
+rather than displaying a frozen table. Quotes come from the snapshot; the model never
+supplies a price the desk presents as tradable.
 
 ## Three things the numbers say
 
@@ -169,6 +218,7 @@ offsets it.
 ```
 src/balm/
   pricing.py     Black-Scholes, CRR binomial, IV solver, early-exercise premium
+  quotes.py      two-sided markets and the side each transaction prices at
   structure.py   calendar greeks, term-structure vol shocks, scenarios, roll rules
   campaign.py    signed cash-flow accounting over the trade history
   tws.py         ib_async client: account, positions, chains with greeks, today's fills
@@ -184,6 +234,8 @@ tests/           pricing checked against textbook values, accounting against fix
 
 ## Caveats
 
-Model prices are not fills. Every quoted premium here assumes you transact at mid, and
-weekly options on both of these names have spreads wide enough that the difference is
-material to the payoff horizon. Nothing in this repository is investment advice.
+Quoted prices are the best available answer to "what would this trade at", not a promise of
+one: a bid is what someone is willing to pay for the size shown, and a wide market can move
+away from you between the snapshot and the order. Where no quote exists the model value is
+labelled as such and should be treated as a valuation, never as a fill. Nothing in this
+repository is investment advice.

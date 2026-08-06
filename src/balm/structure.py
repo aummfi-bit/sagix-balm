@@ -16,6 +16,10 @@ trader needs to see, and both are easy to get wrong by intuition:
    moves far more than long-dated in a crash. ``term_iv_shift`` applies the
    square-root-of-time damping that equity surfaces empirically follow, so a
    crash scenario correctly hurts the short leg more than it helps the anchor.
+
+Model prices here are the model's opinion of value. Wherever a leg is being
+put on or taken off, the tradable price comes from its quote and carries a
+side -- see ``quotes`` -- and is ``None`` when that side is not quoted.
 """
 
 from __future__ import annotations
@@ -35,6 +39,7 @@ from .pricing import (
     extrinsic,
     intrinsic,
 )
+from .quotes import Quote, close_value
 
 DAYS_PER_YEAR = 365.0
 # Reference tenor for a quoted volatility shock, in days.
@@ -81,7 +86,12 @@ class Leg:
 
 @dataclass
 class LegView:
-    """A leg priced at a point in time, with position-scaled greeks."""
+    """A leg priced at a point in time, with position-scaled greeks.
+
+    ``unit_price`` is the model's value of the contract. It is not a fill:
+    the tradable prices hang off ``quote`` and are ``None`` when the market
+    does not quote the side in question.
+    """
 
     leg: Leg
     dte: int
@@ -91,6 +101,22 @@ class LegView:
     early_exercise: float
     per_contract: Greeks
     position: Greeks
+    quote: Quote | None = None
+
+    @property
+    def open_price(self) -> float | None:
+        """Unit price to put this leg on: ask for a long, bid for a short."""
+        return self.quote.to_open(self.leg.quantity) if self.quote else None
+
+    @property
+    def close_price(self) -> float | None:
+        """Unit price to take this leg off: bid for a long, ask for a short."""
+        return self.quote.to_close(self.leg.quantity) if self.quote else None
+
+    @property
+    def close_value(self) -> float | None:
+        """Signed cash from flattening the leg at executable prices."""
+        return close_value(self.quote, self.leg.quantity, self.leg.multiplier)
 
 
 @dataclass
@@ -113,6 +139,19 @@ class NetGreeks:
             return None
         return abs(self.short_theta / self.long_theta)
 
+    @property
+    def liquidation_value(self) -> float | None:
+        """Cash from unwinding every leg at the side that would trade.
+
+        ``value`` is the model's opinion; this is the market's. It is ``None``
+        as soon as one leg lacks a quote on its closing side, because a
+        structure is only worth what all of it can be exited for.
+        """
+        cash = [v.close_value for v in self.legs]
+        if any(c is None for c in cash):
+            return None
+        return sum(cash)  # type: ignore[arg-type]
+
 
 def price_leg(
     leg: Leg,
@@ -122,6 +161,7 @@ def price_leg(
     dividend_yield: float,
     american: bool = True,
     steps: int = 240,
+    quote: Quote | None = None,
 ) -> LegView:
     t = year_fraction(leg.expiry, asof)
     if american:
@@ -142,6 +182,7 @@ def price_leg(
         else 0.0,
         per_contract=greeks,
         position=greeks.scaled(leg.quantity, leg.multiplier),
+        quote=quote,
     )
 
 
@@ -153,8 +194,15 @@ def net_greeks(
     dividend_yield: float = 0.0,
     american: bool = True,
     steps: int = 240,
+    quotes: list[Quote | None] | None = None,
 ) -> NetGreeks:
-    views = [price_leg(l, spot, asof, rate, dividend_yield, american, steps) for l in legs]
+    """Price and aggregate the legs. ``quotes`` lines up positionally with ``legs``."""
+    marks: list[Quote | None] = list(quotes or [])
+    marks += [None] * (len(legs) - len(marks))
+    views = [
+        price_leg(l, spot, asof, rate, dividend_yield, american, steps, q)
+        for l, q in zip(legs, marks)
+    ]
     short_theta = sum(v.position.theta for v in views if v.leg.is_short())
     long_theta = sum(v.position.theta for v in views if not v.leg.is_short())
     return NetGreeks(
@@ -259,8 +307,8 @@ def evaluate_roll(
     asof: date,
     *,
     sold_for: float | None,
-    bid: float | None = None,
-    ask: float | None = None,
+    quote: Quote | None = None,
+    live: bool = False,
     roll_by_weekday: int = 2,
     extrinsic_harvest_target: float = 0.80,
     short_delta_max: float = 0.55,
@@ -270,7 +318,13 @@ def evaluate_roll(
     """Run the weekly management rules against the current short leg.
 
     Each check is phrased so that ``passed`` means "no action required".
+
+    Closing this leg means buying it back, so wherever a real exit price is
+    needed the ask is used, and the checks say so. ``live`` distinguishes a
+    session that should have market data -- where a missing quote is itself
+    something to act on -- from a modeled snapshot, where no quote is expected.
     """
+    exit_price = quote.executable("buy") if quote else None
     checks: list[RollCheck] = []
     leg = short_view.leg
 
@@ -298,23 +352,36 @@ def evaluate_roll(
         )
 
     if sold_for is not None and sold_for > 0:
-        harvested = 1.0 - (short_view.unit_price / sold_for)
-        if harvested >= extrinsic_harvest_target:
+        # The credit is only harvested once the buy-back is paid for, so the ask
+        # is the only honest denominator. Without one the question has no
+        # answer, and a model price dressed up as one would overstate capture
+        # by the whole spread.
+        if exit_price is None:
             checks.append(
                 RollCheck(
                     False,
                     "Harvest target",
-                    f"{harvested:.0%} of the credit captured (target {extrinsic_harvest_target:.0%}). Take it off.",
+                    f"No ask quoted against the ${sold_for:.2f} credit, so the share captured cannot be measured.",
                 )
             )
         else:
-            checks.append(
-                RollCheck(
-                    True,
-                    "Harvest target",
-                    f"{harvested:.0%} of the credit captured, below the {extrinsic_harvest_target:.0%} target.",
+            harvested = 1.0 - (exit_price / sold_for)
+            if harvested >= extrinsic_harvest_target:
+                checks.append(
+                    RollCheck(
+                        False,
+                        "Harvest target",
+                        f"{harvested:.0%} of the credit captured at the ${exit_price:.2f} ask (target {extrinsic_harvest_target:.0%}). Take it off.",
+                    )
                 )
-            )
+            else:
+                checks.append(
+                    RollCheck(
+                        True,
+                        "Harvest target",
+                        f"{harvested:.0%} of the credit captured at the ${exit_price:.2f} ask, below the {extrinsic_harvest_target:.0%} target.",
+                    )
+                )
 
     abs_delta = abs(short_view.per_contract.delta)
     if abs_delta > short_delta_max:
@@ -353,19 +420,40 @@ def evaluate_roll(
             )
         )
 
-    if bid is not None and ask is not None and ask > 0:
-        mid = 0.5 * (bid + ask)
-        spread_pct = (ask - bid) / mid if mid > 0 else 1.0
-        if spread_pct > max_spread_pct:
+    if quote is not None and quote.two_sided:
+        spread_pct = quote.spread_pct or 0.0
+        market = f"${quote.bid:.2f}/${quote.ask:.2f}"
+        if quote.is_crossed:
             checks.append(
                 RollCheck(
                     False,
                     "Liquidity",
-                    f"Spread is {spread_pct:.0%} of mid (${bid:.2f}/${ask:.2f}). Work a mid-price limit, never market.",
+                    f"Bid is above the ask ({market}). The quote is stale or locked; do not price off it.",
+                )
+            )
+        elif spread_pct > max_spread_pct:
+            checks.append(
+                RollCheck(
+                    False,
+                    "Liquidity",
+                    f"Spread is {spread_pct:.0%} of mid ({market}). Work the limit in from the ask, never market.",
                 )
             )
         else:
-            checks.append(RollCheck(True, "Liquidity", f"Spread {spread_pct:.0%} of mid."))
+            checks.append(
+                RollCheck(True, "Liquidity", f"{market}, spread {spread_pct:.0%} of mid.")
+            )
+    elif live:
+        # In a live session a one-sided or absent market is itself the finding:
+        # the exit cannot be priced, so nothing downstream should pretend it can.
+        side = "ask" if (quote is None or quote.ask is None or quote.ask <= 0) else "bid"
+        checks.append(
+            RollCheck(
+                False,
+                "Liquidity",
+                f"No {side} quoted, so the cost to close is unknown. Do not size the roll off a model price.",
+            )
+        )
 
     return checks
 

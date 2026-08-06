@@ -9,9 +9,9 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "sagix balm — Put calendar desk",
+  title: "sagix balm — Calendar desk",
   description:
-    "Interactive put calendar / diagonal desk for GLXY and IBIT: greeks, term structure, scenarios, and weekly roll checklist.",
+    "Interactive put and call calendar desk for GLXY and IBIT: holdings, greeks, term structure, scenarios, and weekly roll checklist.",
 };
 
 export default function RootLayout({

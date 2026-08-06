@@ -8,6 +8,7 @@ import pytest
 
 from balm.campaign import Trade, analyze_campaign, weekly_history
 from balm.flex import merge_trades, parse_trades
+from balm.quotes import Quote
 
 SYM = "GLXY"
 ANCHOR_EXPIRY = date(2027, 1, 15)
@@ -118,12 +119,52 @@ def test_expired_short_counts_as_settled_without_a_closing_trade():
 
 def test_open_short_is_not_counted_as_realized():
     trades = [anchor_buy(), sell(22.0, date(2026, 8, 14), 1.21, date(2026, 8, 3), "s0")]
-    marks = {(SYM, "put", 22.0, date(2026, 8, 14)): 0.90}
+    marks = {(SYM, "put", 22.0, date(2026, 8, 14)): Quote(bid=0.85, ask=0.95)}
     m = analyze_campaign(SYM, trades, date(2026, 8, 5), marks)
 
     assert m.realized_premium == 0.0
     assert m.open_short_credit == pytest.approx(1.21 * 100 - 0.65)
-    assert m.open_short_liability == pytest.approx(90.0)
+    # Closing the short means paying the offer: $95, not the $90 mid.
+    assert m.open_short_liability == pytest.approx(95.0)
+
+
+def test_anchor_is_valued_at_the_bid_and_the_short_at_the_ask():
+    """The whole point: each leg is priced at the side that would trade."""
+    trades = [anchor_buy(), sell(22.0, date(2026, 8, 14), 1.21, date(2026, 8, 3), "s0")]
+    marks = {
+        (SYM, "put", 22.5, ANCHOR_EXPIRY): Quote(bid=5.20, ask=5.80),
+        (SYM, "put", 22.0, date(2026, 8, 14)): Quote(bid=0.85, ask=0.95),
+    }
+    m = analyze_campaign(SYM, trades, date(2026, 8, 5), marks)
+
+    # Selling the anchor hits the bid: $520, not the $550 mid.
+    assert m.anchor_mark == pytest.approx(520.0)
+    assert m.open_short_liability == pytest.approx(95.0)
+    # Both spreads are paid, so liquidation is below the mid-based figure.
+    assert m.net_liquidation == pytest.approx(
+        520.0 - 95.0 + 0.0 + (1.21 * 100 - 0.65) - 550.05
+    )
+
+
+def test_a_missing_quote_makes_the_valuation_unknown_not_optimistic():
+    trades = [anchor_buy(), sell(22.0, date(2026, 8, 14), 1.21, date(2026, 8, 3), "s0")]
+    # The anchor is quoted, the open short is not.
+    marks = {(SYM, "put", 22.5, ANCHOR_EXPIRY): Quote(bid=5.20, ask=5.80)}
+    m = analyze_campaign(SYM, trades, date(2026, 8, 5), marks)
+
+    assert m.anchor_mark == pytest.approx(520.0)
+    assert m.open_short_liability is None
+    # An unpriceable short must not be silently treated as costing nothing.
+    assert m.net_liquidation is None
+
+
+def test_a_bidless_anchor_has_no_mark():
+    """Nobody bidding is an absence of a price, not a price of zero."""
+    marks = {(SYM, "put", 22.5, ANCHOR_EXPIRY): Quote(bid=0.0, ask=5.80)}
+    m = analyze_campaign(SYM, [anchor_buy()], date(2026, 8, 5), marks)
+
+    assert m.anchor_mark is None
+    assert m.net_liquidation is None
 
 
 def test_assignment_is_flagged():

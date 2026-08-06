@@ -50,6 +50,9 @@ class ModelConfig:
     strike_window: float = 0.25
     # Number of forward expirations to pull per underlying.
     expirations: int = 8
+    # Also pull the call chain, so the desk's call panel has real quotes behind
+    # it. Doubles the contracts requested per sync; turn off if that is slow.
+    include_calls: bool = True
 
 
 @dataclass

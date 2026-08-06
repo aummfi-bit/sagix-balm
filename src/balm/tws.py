@@ -20,29 +20,9 @@ from typing import Any, Iterable
 
 from .campaign import Trade
 from .config import Config, Underlying
+from .quotes import Quote, closing_side
 
 log = logging.getLogger(__name__)
-
-
-@dataclass
-class Quote:
-    bid: float | None = None
-    ask: float | None = None
-    last: float | None = None
-    close: float | None = None
-
-    @property
-    def mid(self) -> float | None:
-        if self.bid is not None and self.ask is not None and self.bid > 0 and self.ask > 0:
-            return 0.5 * (self.bid + self.ask)
-        return self.last if self.last is not None else self.close
-
-    @property
-    def spread_pct(self) -> float | None:
-        m = self.mid
-        if m and self.bid is not None and self.ask is not None and self.ask > 0 and self.bid > 0:
-            return (self.ask - self.bid) / m
-        return None
 
 
 @dataclass
@@ -73,6 +53,11 @@ class OptionQuote:
             "last": self.quote.last,
             "mid": self.quote.mid,
             "spreadPct": self.quote.spread_pct,
+            "twoSided": self.quote.two_sided,
+            # The side you would actually trade, so a consumer never has to
+            # guess which half of the market applies to it.
+            "buyAt": self.quote.executable("buy"),
+            "sellAt": self.quote.executable("sell"),
             "iv": self.iv,
             "delta": self.delta,
             "gamma": self.gamma,
@@ -95,6 +80,19 @@ class PositionRow:
     market_price: float | None = None
     market_value: float | None = None
     unrealized_pnl: float | None = None
+    # Set from the live chain: what flattening this leg actually prices at.
+    exit_price: float | None = None
+
+    def apply_quote(self, quote: "Quote | None") -> None:
+        """Price the exit off the side that would trade, if it is quoted."""
+        self.exit_price = quote.to_close(self.quantity) if quote else None
+
+    @property
+    def exit_value(self) -> float | None:
+        """Signed cash from closing the position, ``None`` without a quote."""
+        if self.exit_price is None:
+            return None
+        return self.exit_price * self.quantity * self.multiplier
 
     def as_dict(self) -> dict[str, Any]:
         return {
@@ -107,9 +105,13 @@ class PositionRow:
             "strike": self.strike,
             "expiry": self.expiry.isoformat() if self.expiry else None,
             "conId": self.con_id,
+            # IBKR's own mark, which is mid-derived and therefore not a fill.
             "marketPrice": self.market_price,
             "marketValue": self.market_value,
             "unrealizedPnl": self.unrealized_pnl,
+            "closingSide": closing_side(self.quantity),
+            "exitPrice": self.exit_price,
+            "exitValue": self.exit_value,
         }
 
 
@@ -241,8 +243,14 @@ class TwsClient:
         spot: float,
         max_expirations: int,
         strike_window: float,
+        rights: tuple[str, ...] = ("P",),
     ) -> list[OptionQuote]:
-        """Pull near-the-money puts across the next several expirations."""
+        """Pull near-the-money options across the next several expirations.
+
+        ``rights`` is ("P",) for the put campaign alone, or ("P", "C") when the
+        call side is wanted too. Each right doubles the number of contracts in
+        flight, so the caller decides.
+        """
         from ib_async import Option
 
         params = self.ib.reqSecDefOptParams(
@@ -266,9 +274,10 @@ class TwsClient:
             return []
 
         contracts = [
-            Option(u.symbol, exp, k, "P", "SMART", tradingClass=chain.tradingClass)
+            Option(u.symbol, exp, k, right, "SMART", tradingClass=chain.tradingClass)
             for exp in expirations
             for k in strikes
+            for right in rights
         ]
         qualified = [c for c in self.ib.qualifyContracts(*contracts) if c.conId]
 
@@ -289,7 +298,7 @@ class TwsClient:
             quotes.append(
                 OptionQuote(
                     symbol=u.symbol,
-                    kind="put",
+                    kind={"P": "put", "C": "call"}.get(contract.right, "put"),
                     strike=contract.strike,
                     expiry=_parse_ib_date(contract.lastTradeDateOrContractMonth),
                     con_id=contract.conId,

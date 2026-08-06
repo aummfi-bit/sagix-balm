@@ -8,6 +8,11 @@ the same arithmetic without special cases.
 
 Sign convention throughout: cash flow is positive when money enters the
 account. Buying costs money, selling raises it, commissions always subtract.
+
+Still-open legs are valued at what it would cost to *get out of them*, not at
+the mid. The anchor is a long, so it liquidates into the bid; an open short
+weekly has to be bought back at the ask. Marking both at the mid overstates
+the campaign by half a spread on each leg, in the flattering direction.
 """
 
 from __future__ import annotations
@@ -17,6 +22,7 @@ from dataclasses import dataclass, field
 from datetime import date
 
 from .pricing import OptionKind
+from .quotes import Quote, close_value
 
 
 @dataclass
@@ -96,11 +102,11 @@ class CampaignMetrics:
     anchor_expiry: date | None
     anchor_quantity: float
     anchor_debit: float  # positive number of dollars paid
-    anchor_mark: float | None  # current market value of the anchor position
+    anchor_mark: float | None  # proceeds from selling the anchor at the bid
 
     realized_premium: float  # net cash banked from settled short legs
     open_short_credit: float  # cash taken in on short legs still open
-    open_short_liability: float | None  # cost to close them right now
+    open_short_liability: float | None  # cost to buy them back at the ask
     commissions: float
 
     weeks_active: float
@@ -140,11 +146,21 @@ class CampaignMetrics:
 
     @property
     def net_liquidation(self) -> float | None:
-        """Mark-to-market of the whole campaign, including cash already banked."""
-        if self.anchor_mark is None:
+        """What the campaign is worth if unwound now, plus cash already banked.
+
+        Every open leg is priced at the side that would trade, so this is a
+        number you could actually realize rather than a mid-based estimate of
+        one. ``None`` when any open leg is missing that side of the market.
+        """
+        if self.anchor_mark is None or self.open_short_liability is None:
             return None
-        liability = self.open_short_liability or 0.0
-        return self.anchor_mark - liability + self.realized_premium + self.open_short_credit - self.anchor_debit
+        return (
+            self.anchor_mark
+            - self.open_short_liability
+            + self.realized_premium
+            + self.open_short_credit
+            - self.anchor_debit
+        )
 
     @property
     def is_free_carry(self) -> bool:
@@ -170,13 +186,16 @@ def analyze_campaign(
     symbol: str,
     trades: list[Trade],
     asof: date,
-    marks: dict[tuple, float] | None = None,
+    marks: dict[tuple, Quote] | None = None,
     anchor_key: tuple | None = None,
 ) -> CampaignMetrics:
     """Reduce a trade history to campaign metrics.
 
-    ``marks`` maps a contract key to its current per-share price, used to value
-    still-open legs. ``anchor_key`` pins the long leg explicitly; when omitted
+    ``marks`` maps a contract key to its live two-sided quote. Open legs are
+    valued at the price that would close them -- the bid for the long anchor,
+    the ask for a short weekly -- and a leg whose closing side is unquoted
+    leaves the corresponding figure ``None`` rather than borrowing the other
+    side of the book. ``anchor_key`` pins the long leg explicitly; when omitted
     the longest-dated net-long put is used, which is the anchor by definition.
     """
     marks = marks or {}
@@ -194,9 +213,11 @@ def analyze_campaign(
     if anchor is not None:
         # Cash flow on the anchor is negative (we paid); express as a positive debit.
         anchor_debit = max(-anchor.net_cash, 0.0)
-        mark = marks.get((anchor.symbol, anchor.kind, anchor.strike, anchor.expiry))
-        if mark is not None:
-            anchor_mark = mark * anchor.net_quantity * 100.0
+        # Selling the anchor hits the bid, so that is what it is worth today.
+        anchor_mark = close_value(
+            marks.get((anchor.symbol, anchor.kind, anchor.strike, anchor.expiry)),
+            anchor.net_quantity,
+        )
 
     realized = 0.0
     open_credit = 0.0
@@ -233,12 +254,13 @@ def analyze_campaign(
                 losers += 1
         else:
             open_credit += ledger.net_cash
-            mark = marks.get(key)
-            if mark is None:
+            # Cost to flatten: buying the short back lifts the offer.
+            cash = close_value(marks.get(key), ledger.net_quantity)
+            if cash is None:
                 have_all_marks = False
             else:
-                # Cost to flatten: buying back a short position.
-                open_liability += mark * abs(ledger.net_quantity) * 100.0
+                # Buying back is cash out; the liability is that flipped positive.
+                open_liability -= cash
 
     weeks = 0.0
     if first_short is not None:

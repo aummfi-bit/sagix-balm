@@ -145,35 +145,44 @@ def cmd_sync(config: Config, args: argparse.Namespace) -> int:
         for u in config.underlyings:
             stock = client.stock_contract(u)
             spot_quote = client.spot(stock)
+            # The underlying is a reference price for the model, not something
+            # this position trades, so the mid is the right input here. Every
+            # price that does get transacted picks a side instead.
             spot = spot_quote.mid
             if not spot:
                 log.error("No usable price for %s; skipping.", u.symbol)
                 continue
 
             chain = client.option_chain(
-                u, stock, spot, config.model.expirations, config.model.strike_window
+                u,
+                stock,
+                spot,
+                config.model.expirations,
+                config.model.strike_window,
+                rights=("P", "C") if config.model.include_calls else ("P",),
             )
             positions = client.positions([u.symbol])
 
-            marks = {
-                (q.symbol, q.kind, q.strike, q.expiry): q.quote.mid
-                for q in chain
-                if q.quote.mid is not None
-            }
+            # Both sides of every market, keyed by contract. Downstream code
+            # picks the side each number needs rather than collapsing to a mid.
+            marks = {(q.symbol, q.kind, q.strike, q.expiry): q.quote for q in chain}
+            for p in positions:
+                p.apply_quote(marks.get((p.symbol, p.kind, p.strike, p.expiry)))
+
+            unquoted = sum(1 for q in chain if not q.quote.two_sided)
+            if unquoted:
+                log.warning(
+                    "%s: %d of %d contracts have no two-sided market; those prices "
+                    "are reported as unavailable.",
+                    u.symbol,
+                    unquoted,
+                    len(chain),
+                )
 
             spec, plan_spot = _resolve_live_spec(u, positions, chain, spot, asof)
             if spec is None:
                 log.warning("No put calendar found in %s positions; using plan block.", u.symbol)
                 spec, plan_spot = _spec_from_plan(u, asof)
-
-            short_quote = next(
-                (
-                    q
-                    for q in chain
-                    if q.strike == spec.short_strike and q.expiry == spec.short_expiry
-                ),
-                None,
-            )
 
             strikes = sorted({q.strike for q in chain})
             block = build_underlying_block(
@@ -187,17 +196,11 @@ def cmd_sync(config: Config, args: argparse.Namespace) -> int:
                 weekly_strikes=strikes,
                 trades=trades,
                 marks=marks,
-                quote_bid=short_quote.quote.bid if short_quote else None,
-                quote_ask=short_quote.quote.ask if short_quote else None,
                 source="live",
             )
             block["positions"] = [p.as_dict() for p in positions]
             block["chain"] = [q.as_dict() for q in chain]
-            block["quote"] = {
-                "bid": spot_quote.bid,
-                "ask": spot_quote.ask,
-                "last": spot_quote.last,
-            }
+            block["quote"] = spot_quote.as_dict()
             payload["underlyings"].append(block)
 
     path = write_snapshot(payload, config.snapshot_dir, name=args.name)
@@ -223,7 +226,15 @@ def _resolve_live_spec(
     short = min(shorts, key=lambda p: p.expiry) if shorts else None
 
     def iv_for(strike, expiry, fallback):
-        q = next((c for c in chain if c.strike == strike and c.expiry == expiry), None)
+        # The chain may carry both rights; the put campaign wants the put's IV.
+        q = next(
+            (
+                c
+                for c in chain
+                if c.kind == "put" and c.strike == strike and c.expiry == expiry
+            ),
+            None,
+        )
         return q.iv if q and q.iv else fallback
 
     short_expiry = short.expiry if short else _next_friday(asof)

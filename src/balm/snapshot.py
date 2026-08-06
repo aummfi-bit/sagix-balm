@@ -9,6 +9,15 @@ Two modes produce the same schema:
 Keeping one schema means the canvas does not care which produced it, and a
 model snapshot can be diffed against a live one to see how far reality has
 drifted from the plan.
+
+Every price that stands for a transaction is emitted on the side that would
+actually trade -- ``ask`` where the row describes buying, ``bid`` where it
+describes selling -- and is ``null`` when the market does not quote that side.
+Nothing is substituted for a missing quote: anything derived from one (a
+breakeven, a payoff horizon, a cost as a share of spot) goes ``null`` with it.
+The model's own value travels alongside under a ``theo`` name so the two can
+never be mistaken for each other, and a model snapshot reports no transactable
+price at all.
 """
 
 from __future__ import annotations
@@ -17,11 +26,12 @@ import json
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 from .campaign import CampaignMetrics, Trade, analyze_campaign, weekly_history
 from .config import Config, Underlying
 from .pricing import bs_greeks, bs_price
+from .quotes import Quote
 from .structure import (
     Leg,
     LegView,
@@ -33,8 +43,19 @@ from .structure import (
     year_fraction,
 )
 
-SCHEMA_VERSION = 2
+SCHEMA_VERSION = 3
 DEFAULT_SPOT_MOVES = [-0.40, -0.30, -0.20, -0.15, -0.10, -0.05, 0.0, 0.05, 0.10, 0.15, 0.20, 0.30, 0.40]
+
+# (strike, expiry) -> the live market in that put, when there is one.
+QuoteLookup = Callable[[float, date], "Quote | None"]
+
+
+def _no_quotes(strike: float, expiry: date) -> "Quote | None":
+    return None
+
+
+def _round(value: float | None, digits: int) -> float | None:
+    return None if value is None else round(value, digits)
 
 
 @dataclass
@@ -62,6 +83,7 @@ class StructureSpec:
 
 
 def _greeks_dict(view: LegView) -> dict[str, Any]:
+    q = view.quote
     return {
         "label": view.leg.label,
         "strike": view.leg.strike,
@@ -69,7 +91,15 @@ def _greeks_dict(view: LegView) -> dict[str, Any]:
         "dte": view.dte,
         "quantity": view.leg.quantity,
         "iv": round(view.leg.iv, 4),
+        # Theoretical value, not a fill.
         "price": round(view.unit_price, 4),
+        "bid": q.bid if q else None,
+        "ask": q.ask if q else None,
+        "spreadPct": _round(q.spread_pct, 4) if q else None,
+        # What putting the leg on and taking it off actually price at.
+        "openPrice": view.open_price,
+        "closePrice": view.close_price,
+        "closeValue": _round(view.close_value, 2),
         "intrinsic": round(view.unit_intrinsic, 4),
         "extrinsic": round(view.unit_extrinsic, 4),
         "earlyExercise": round(view.early_exercise, 4),
@@ -89,36 +119,53 @@ def anchor_candidate_table(
     asof: date,
     expiries: list[tuple[date, float]],
     strikes: list[float],
-    weekly_premium: float,
+    weekly_premium: float | None,
     rate: float,
     dividend_yield: float,
     capture_rate: float = 0.75,
+    quote_for: QuoteLookup = _no_quotes,
 ) -> list[dict[str, Any]]:
     """Cost and payoff horizon for each candidate anchor.
 
-    ``weeksToCover`` is the honest figure: the gross count divided by the
-    share of theoretical premium actually captured after early closes,
-    losing weeks and commissions.
+    Buying the anchor means lifting the offer, so ``cost`` is the ask, and it
+    is ``null`` where none is quoted -- an anchor nobody will sell you does not
+    have a price just because the model has an opinion about one.
+
+    ``weeksToCover`` is the honest figure: the gross count divided by the share
+    of premium actually captured after early closes, losing weeks and
+    commissions. It needs a real price at both ends -- the ask you pay for the
+    anchor and the bid the weekly pays you -- so it is ``null`` without them.
     """
     rows = []
     for expiry, iv in expiries:
         t = year_fraction(expiry, asof)
         for k in strikes:
             g = bs_greeks("put", spot, k, t, rate, dividend_yield, iv)
-            gross = g.price / weekly_premium if weekly_premium > 0 else None
+            quote = quote_for(k, expiry)
+            cost = quote.executable("buy") if quote else None
+            gross = (
+                cost / weekly_premium
+                if cost is not None and weekly_premium is not None and weekly_premium > 0
+                else None
+            )
             rows.append(
                 {
                     "expiry": expiry.isoformat(),
                     "dte": (expiry - asof).days,
                     "strike": k,
                     "iv": round(iv, 4),
-                    "cost": round(g.price, 2),
-                    "costPctSpot": round(g.price / spot, 4),
+                    # The model's value, never to be read as a fill.
+                    "theoCost": round(g.price, 2),
+                    "bid": quote.bid if quote else None,
+                    "ask": cost,
+                    # What buying it actually costs.
+                    "cost": cost,
+                    "costPctSpot": _round(cost / spot if cost is not None else None, 4),
                     "delta": round(g.delta, 4),
                     "theta": round(g.theta, 4),
                     "vega": round(g.vega, 4),
-                    "weeksGross": round(gross, 1) if gross else None,
-                    "weeksRealistic": round(gross / capture_rate, 1) if gross else None,
+                    "weeksGross": _round(gross, 1),
+                    "weeksRealistic": _round(gross / capture_rate if gross else None, 1),
                 }
             )
     return rows
@@ -133,19 +180,36 @@ def weekly_candidate_table(
     rate: float,
     dividend_yield: float,
     anchor_theta_per_day: float,
+    quote_for: QuoteLookup = _no_quotes,
 ) -> list[dict[str, Any]]:
-    """Each sellable weekly strike, with the greeks that drive the roll choice."""
+    """Each sellable weekly strike, with the greeks that drive the roll choice.
+
+    These rows describe a sale, so ``premium`` is the bid -- what a seller is
+    actually paid -- and the breakeven is struck from it. Where nobody is
+    bidding there is no premium and no breakeven, only the model's opinion in
+    ``theoPremium``, which buys you nothing.
+    """
     t = year_fraction(expiry, asof)
     rows = []
     for k in strikes:
         g = bs_greeks("put", spot, k, t, rate, dividend_yield, iv)
+        quote = quote_for(k, expiry)
+        premium = quote.executable("sell") if quote else None
+        breakeven = k - premium if premium is not None else None
         rows.append(
             {
                 "strike": k,
                 "expiry": expiry.isoformat(),
                 "dte": (expiry - asof).days,
-                "premium": round(g.price, 2),
-                "premiumPctSpot": round(g.price / spot, 4),
+                # The model's value, never to be read as a fill.
+                "theoPremium": round(g.price, 2),
+                "bid": premium,
+                "ask": quote.ask if quote else None,
+                # What selling it actually pays.
+                "premium": premium,
+                "premiumPctSpot": _round(
+                    premium / spot if premium is not None else None, 4
+                ),
                 "delta": round(g.delta, 4),
                 "gamma": round(g.gamma, 5),
                 "theta": round(g.theta, 4),
@@ -154,8 +218,10 @@ def weekly_candidate_table(
                 "thetaCoverage": round(abs(g.theta / anchor_theta_per_day), 1)
                 if anchor_theta_per_day
                 else None,
-                "breakeven": round(k - g.price, 2),
-                "breakevenPct": round((k - g.price) / spot - 1.0, 4),
+                "breakeven": _round(breakeven, 2),
+                "breakevenPct": _round(
+                    breakeven / spot - 1.0 if breakeven is not None else None, 4
+                ),
             }
         )
     return rows
@@ -228,19 +294,46 @@ def build_underlying_block(
     anchor_strikes: list[float],
     weekly_strikes: list[float],
     trades: list[Trade] | None = None,
-    marks: dict[tuple, float] | None = None,
-    quote_bid: float | None = None,
-    quote_ask: float | None = None,
+    marks: dict[tuple, Quote] | None = None,
     source: str = "model",
 ) -> dict[str, Any]:
     rate = config.model.risk_free_rate
     q = config.model.dividend_yield
     legs = spec.legs()
+    live = source == "live"
 
-    ng = net_greeks(legs, spot, asof, rate, q, american=True, steps=config.model.binomial_steps)
+    quotes = marks or {}
+
+    def quote_for(strike: float, expiry: date) -> Quote | None:
+        return quotes.get((u.symbol, "put", strike, expiry))
+
+    anchor_quote = quote_for(spec.anchor_strike, spec.anchor_expiry)
+    short_quote = quote_for(spec.short_strike, spec.short_expiry)
+
+    ng = net_greeks(
+        legs,
+        spot,
+        asof,
+        rate,
+        q,
+        american=True,
+        steps=config.model.binomial_steps,
+        quotes=[anchor_quote, short_quote],
+    )
     anchor_view, short_view = ng.legs[0], ng.legs[1]
 
-    atm_weekly = bs_price("put", spot, spot, year_fraction(spec.short_expiry, asof), rate, q, spec.short_iv)
+    # Price the weekly benchmark off a strike that actually exists, since that
+    # is the one a bid can be quoted on.
+    atm_strike = (
+        min(weekly_strikes, key=lambda k: abs(k - spot)) if weekly_strikes else spot
+    )
+    atm_theo = bs_price(
+        "put", spot, atm_strike, year_fraction(spec.short_expiry, asof), rate, q, spec.short_iv
+    )
+    atm_quote = quote_for(atm_strike, spec.short_expiry)
+    # What one week of selling actually pays. Null without a bid, and every
+    # payoff horizon derived from it goes null too.
+    atm_weekly = atm_quote.executable("sell") if atm_quote else None
 
     scenarios_by_horizon = {}
     for horizon in (1, 3, 7):
@@ -260,8 +353,8 @@ def build_underlying_block(
         short_view,
         asof,
         sold_for=spec.short_credit,
-        bid=quote_bid,
-        ask=quote_ask,
+        quote=short_quote,
+        live=live,
         roll_by_weekday=config.rules.roll_by_weekday,
         extrinsic_harvest_target=config.rules.extrinsic_harvest_target,
         short_delta_max=config.rules.short_delta_max,
@@ -295,17 +388,23 @@ def build_underlying_block(
                 "gamma": round(ng.gamma, 4),
                 "theta": round(ng.theta, 2),
                 "vega": round(ng.vega, 2),
+                # The model's value of the structure...
                 "value": round(ng.value, 2),
+                # ...and what unwinding it at the quotes would actually pay.
+                "liquidationValue": _round(ng.liquidation_value, 2),
                 "shortTheta": round(ng.short_theta, 2),
                 "longTheta": round(ng.long_theta, 2),
                 "thetaRatio": round(ng.theta_ratio, 1) if ng.theta_ratio else None,
             },
         },
-        "atmWeeklyPremium": round(atm_weekly, 2),
+        "atmWeeklyPremium": atm_weekly,
+        "atmWeeklyStrike": atm_strike,
+        "atmWeeklyTheo": round(atm_theo, 2),
         "termStructure": _term_structure(spec),
         "volBeta": spec.vol_beta,
         "anchorCandidates": anchor_candidate_table(
-            spot, asof, anchor_expiries, anchor_strikes, atm_weekly, rate, q
+            spot, asof, anchor_expiries, anchor_strikes, atm_weekly, rate, q,
+            quote_for=quote_for,
         ),
         "weeklyCandidates": weekly_candidate_table(
             spot,
@@ -316,6 +415,7 @@ def build_underlying_block(
             rate,
             q,
             anchor_view.per_contract.theta,
+            quote_for=quote_for,
         ),
         "scenarios": scenarios_by_horizon,
         "rollChecks": [
