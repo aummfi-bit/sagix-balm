@@ -128,7 +128,6 @@ function AddOptionForm({
               expiry,
               quantity: side === "bought" ? count : -count,
               price: price === "" ? null : Number(price),
-              source: "manual",
             })
           }
           className="rounded-md bg-[var(--accent)] px-3 py-1.5 text-sm font-semibold text-[#0d1117] transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40"
@@ -143,7 +142,7 @@ function AddOptionForm({
           Cancel
         </button>
         <span className="text-xs text-[var(--text-dim)]">
-          Stored in this browser only. balm never places orders.
+          Stored in this browser only. Nothing is sent anywhere.
         </span>
       </div>
     </div>
@@ -174,9 +173,7 @@ export function HoldingsPanel({
           Holdings · {market.symbol}
         </h2>
         <span className="text-xs text-[var(--text-dim)]">
-          {holdings.fromSync
-            ? "Share count and cash from the last balm sync"
-            : "Enter your share count and cash, or run balm sync"}
+          Yours to enter — kept in this browser
         </span>
       </div>
 
@@ -292,11 +289,6 @@ export function HoldingsPanel({
                         {o.quantity > 0 ? "Long" : "Short"}
                       </span>{" "}
                       {o.kind}
-                      {o.source === "sync" ? (
-                        <span className="ml-2 rounded border border-[var(--border)] px-1 text-[10px] uppercase tracking-wider text-[var(--text-dim)]">
-                          sync
-                        </span>
-                      ) : null}
                     </td>
                     <td className="px-3 py-2 text-right font-mono tabular-nums text-[var(--text)]">
                       {o.strike.toFixed(2)}
@@ -317,21 +309,19 @@ export function HoldingsPanel({
                       {usdOrDash(holdingValue(o, market), 0)}
                     </td>
                     <td className="px-3 py-2 text-left">
-                      {o.source === "manual" ? (
-                        <button
-                          type="button"
-                          aria-label="Remove holding"
-                          onClick={() =>
-                            onChange({
-                              ...holdings,
-                              options: holdings.options.filter((x) => x.id !== o.id),
-                            })
-                          }
-                          className="rounded border border-[var(--border)] px-2 py-0.5 text-xs text-[var(--text-dim)] transition hover:border-[var(--bad)] hover:text-[var(--bad)]"
-                        >
-                          Remove
-                        </button>
-                      ) : null}
+                      <button
+                        type="button"
+                        aria-label="Remove holding"
+                        onClick={() =>
+                          onChange({
+                            ...holdings,
+                            options: holdings.options.filter((x) => x.id !== o.id),
+                          })
+                        }
+                        className="rounded border border-[var(--border)] px-2 py-0.5 text-xs text-[var(--text-dim)] transition hover:border-[var(--bad)] hover:text-[var(--bad)]"
+                      >
+                        Remove
+                      </button>
                     </td>
                   </tr>
                 ))}
@@ -343,9 +333,8 @@ export function HoldingsPanel({
         <p className="text-xs text-[var(--text-dim)]">
           <strong className="text-[var(--text-strong)]">Value now</strong> closes
           the position at the side that would trade — a long sells into the bid,
-          a short is bought back at the ask. A dash means that side is not
-          quoted. Rows tagged <em>sync</em> come from the account and refresh on
-          every update; the rest are tracked in this browser.
+          a short is bought back at the ask, both from the delayed feed. A dash
+          means that side is not quoted.
         </p>
       </div>
     </section>

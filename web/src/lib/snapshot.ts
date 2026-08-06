@@ -12,7 +12,6 @@ export type BalmSnapshot = {
   schemaVersion: number;
   generatedAt: string;
   asof: string;
-  account?: Record<string, number>;
   /** Where the prices came from: "cboe" for the delayed public feed. */
   quoteSource?: string;
   quotesDelayed?: boolean;
@@ -26,17 +25,6 @@ export type BalmSnapshot = {
     spot: number;
     volBeta?: number;
     quotesAsOf?: string | null;
-    positions?: Array<{
-      symbol: string;
-      secType: string;
-      quantity: number;
-      avgCost: number;
-      multiplier: number;
-      kind?: string | null;
-      strike?: number | null;
-      expiry?: string | null;
-      exitPrice?: number | null;
-    }>;
     structure?: {
       contracts?: number;
       legs?: Array<{

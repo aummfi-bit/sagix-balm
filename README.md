@@ -1,9 +1,12 @@
 # sagix-balm
 
-Tracks a **put calendar / diagonal campaign** against an Interactive Brokers account: a
-long-dated put "anchor" financed by a rolling series of short weekly puts, with the
-central question being *how much of the anchor's debit has the weekly premium actually
-paid off*.
+A desk for **calendar / diagonal structures**: a long-dated "anchor" financed by a rolling
+series of short weekly options, with the central question being *how much of the anchor's
+debit has the weekly premium actually paid off*.
+
+Prices come from Cboe's public delayed feed. There is no broker account, no gateway
+process and no credential anywhere in this repository — which is why the whole thing runs
+from a static host and keeps itself current.
 
 Two underlyings, two tabs. Both are configurable — nothing is hardcoded to a ticker.
 
@@ -26,16 +29,17 @@ then open either calendar:
 
 The status line is the only thing at the top: a green light when the quote feed answers,
 red when it does not, the timestamp on the prices actually being displayed, and the delay.
-There is no refresh button — refreshing means `balm quotes` (or `balm sync`) writing a new
-snapshot, which a page view cannot do. The desk renders the committed snapshot.
+There is no refresh button: the desk polls the feed itself every minute through its own
+`/api/quotes` route, so the prices keep up without anyone clicking anything. The committed
+snapshot is what paints first, before the first poll lands.
 
-The holdings panel shows the share count and cash from the last `balm sync`, plus any
-option lines you add by hand. Manual lines are stored in your browser and never sent
-anywhere; the balm connection to IBKR is read-only and places no orders.
+The holdings panel is yours to fill in: share count, cash, and option lines with the fill
+price you actually got. It lives in your browser's local storage and is never sent
+anywhere. Each line is valued at the side that would close it.
 
 The calls panel is the same analysis pointed at the other half of the chain — a long-dated
-call anchor financed by weekly short calls. `balm sync` pulls both rights so it has a real
-book behind it; set `model.include_calls = false` to skip the extra market data.
+call anchor financed by weekly short calls. The feed carries both rights, so both panels
+have a real book behind them.
 
 Deployed on Vercel from the `web/` root.
 
@@ -48,10 +52,12 @@ cd web && npm install && npm run dev
 - **Prices and risks the structure.** Black-Scholes for speed, plus a Cox-Ross-Rubinstein
   binomial for the short leg, because American early exercise is what actually determines
   assignment risk.
-- **Tracks the campaign.** Signed cash-flow accounting over your real fills, so rolls,
-  partial closes, assignments and commissions all fold in without special cases. Reports
-  realized premium, recovery ratio, and an honest weeks-to-payoff based on the rate you
-  have actually achieved rather than a theoretical full-premium capture.
+- **Tracks the campaign.** Signed cash-flow accounting over your fills, so rolls, partial
+  closes, assignments and commissions all fold in without special cases. Reports realized
+  premium, recovery ratio, and an honest weeks-to-payoff based on the rate actually
+  achieved rather than a theoretical full-premium capture. (`campaign.py` currently has no
+  automatic source of fills — the broker integration it used to read is gone, and the
+  desk's holdings panel is not yet wired into it.)
 - **Models scenarios properly.** Volatility shocks are damped across the term structure by
   the inverse square root of time, so a crash correctly inflates the weekly you are short
   far more than the anchor you own.
@@ -63,7 +69,7 @@ cd web && npm install && npm run dev
 
 ## Install
 
-Requires Python 3.11+ (`ib_async` needs 3.10 or newer).
+Requires Python 3.11+. The only dependency is `requests`.
 
 ```bash
 python3.12 -m venv .venv
@@ -76,83 +82,55 @@ cp config.example.toml config.toml
 
 ```
 Underlyings   : GLXY, IBIT
-TWS socket    : reachable at 127.0.0.1:7497
-Flex token    : present (from $IBKR_FLEX_TOKEN)
-ib_async      : installed
+  GLXY   configured
+  IBIT   configured
+Cboe GLXY     : 822 contracts, spot 20.14, quoted 2026-08-06 15:49:05 ET
+Cboe IBIT     : 2366 contracts, spot 36.62, quoted 2026-08-06 17:44:15 ET
+Quote delay   : ~15 min — indicative, not executable
 ```
 
-## Connecting to IBKR
+## Where the prices come from
 
-Two sources are needed, and neither is sufficient alone: TWS only retains executions for
-the current session, so a multi-week campaign history has to come from a Flex statement.
-The tool reconciles them, de-duplicating on execution id.
+[Cboe](https://www.cboe.com) publishes delayed quotes for US-listed options as plain JSON,
+no key and no account:
 
-### 1. TWS or IB Gateway (live marks, greeks, positions)
-
-Start TWS or IB Gateway and enable
-**Configure → API → Settings → Enable ActiveX and Socket Clients**. Set the matching port
-in `config.toml`:
-
-| Application | Paper | Live |
-| --- | --- | --- |
-| TWS | 7497 | 7496 |
-| IB Gateway | 4002 | 4001 |
-
-The connection is opened **read-only**. This tool never places an order.
-
-### 2. Flex Web Service (settled trade history)
-
-In Client Portal go to **Performance & Reports → Flex Queries** and create a *Trades*
-query including `underlyingSymbol`, `assetCategory`, `putCall`, `strike`, `expiry`,
-`quantity`, `tradePrice`, `ibCommission`, `tradeDate`, `multiplier`, `notes` and
-`tradeID`. Then enable **Flex Web Service Configuration** and generate a token.
-
-```bash
-export IBKR_FLEX_TOKEN=...          # never put this in config.toml
-# set flex.query_id in config.toml
 ```
+https://cdn.cboe.com/api/global/delayed_quotes/options/{SYMBOL}.json
+```
+
+Each contract carries bid, ask, sizes, implied volatility, greeks and open interest, and
+the payload carries the underlying's own market and a timestamp. Everything sourced from
+it is labelled with that timestamp so nothing gets mistaken for live.
+
+**It is delayed by about fifteen minutes.** That is fine for knowing where a position
+stands and wrong for pricing a roll to the cent, and the desk says so on every page. It
+also knows nothing about *you*: no positions, no cash, no fills. Those you type into the
+holdings panel.
 
 ## Commands
 
 ```bash
-balm doctor                  # check config, TWS reachability, Flex credentials
-balm plan                    # model-only snapshot from [underlyings.plan], no TWS needed
-balm quotes                  # delayed-quote snapshot from Cboe: no TWS, no credentials
-balm sync                    # live snapshot: TWS marks and greeks + Flex history
-balm sync --flex-file f.xml  # use a saved statement instead of downloading
-balm flex --out f.xml        # download the raw Flex statement
+balm doctor                  # check the config and that the feed answers
+balm plan                    # model-only snapshot from [underlyings.plan], no market data
+balm quotes                  # snapshot priced off the delayed feed
 ```
 
-Both `plan` and `sync` write the same JSON schema to `data/snapshots/latest.json` plus a
-dated copy, so a plan can be diffed against reality later.
+Both write the same JSON schema to `data/snapshots/latest.json` plus a dated copy, so a
+plan can be diffed against what the market actually quotes.
 
-`sync` infers the structure from your actual holdings — the anchor is the longest-dated
-long put, the income leg is the nearest-dated short put — and falls back to the
-`[underlyings.plan]` block when it finds no calendar.
+`quotes` keeps the strikes and expiries named in `[underlyings.plan]` but takes spot and
+implied volatility from the feed — a plan written weeks ago carries a spot that has since
+moved, and pricing a structure off it is how a short leg goes quietly in the money without
+the checklist noticing.
 
-## Two quote sources
-
-| | `balm sync` | `balm quotes` |
-| --- | --- | --- |
-| Source | TWS / IB Gateway | Cboe's public delayed feed |
-| Needs | A logged-in gateway on the same machine | Nothing — an unauthenticated GET |
-| Freshness | Live | ~15 minutes behind, self-timestamped |
-| Gives | Chain, positions, cash, today's fills | Chain and the underlying's price only |
-| Runs on | Wherever the gateway runs | Anywhere: laptop, cron, cloud runner |
-
-`balm quotes` is what makes an unattended refresh possible. It takes spot, implied
-volatility and both sides of every quote from Cboe, writes the same snapshot schema, and
-labels everything `cboe` with the feed's own timestamp so nothing gets mistaken for live.
-It knows nothing about your account: no positions, no cash, no fills — those need `sync`
-or a Flex statement (`balm quotes --flex-file statement.xml` folds in a saved one).
-
-Delayed quotes are for knowing where you stand, not for pricing a roll to the cent. The
-desk says so on every page.
+The desk does not need either command to stay current; it polls the feed directly. Run
+`balm quotes` when you want a snapshot committed for the first paint, or to diff a day
+against another.
 
 ## Configuration
 
-Everything lives in `config.toml`, which is gitignored because the Flex token grants read
-access to your whole account history. See `config.example.toml`; the parts worth knowing:
+Everything lives in `config.toml` — see `config.example.toml`. Nothing in it is a
+credential. The parts worth knowing:
 
 ```toml
 [[underlyings]]
@@ -205,8 +183,8 @@ share of spot — goes with them rather than being estimated. The model's own va
 alongside under a `theo` name and in the desk's `Model` column, where it can be read as
 what it is: a valuation, not a fill.
 
-`balm plan` has no market data behind it, so a model snapshot quotes nothing at all. In a
-live `sync` a missing quote fails the liquidity check and leaves the harvest target
+`balm plan` has no market data behind it, so a model snapshot quotes nothing at all. With
+quotes, a missing side fails the liquidity check and leaves the harvest target
 unmeasurable, because an exit that cannot be priced is a finding, not a detail.
 
 ## The desk
@@ -248,8 +226,6 @@ src/balm/
   cboe.py        delayed public quote feed: chain, greeks, spot, no credentials
   structure.py   calendar greeks, term-structure vol shocks, scenarios, roll rules
   campaign.py    signed cash-flow accounting over the trade history
-  tws.py         ib_async client: account, positions, chains with greeks, today's fills
-  flex.py        Flex Web Service two-step download and trade parsing
   snapshot.py    JSON assembly shared by plan and sync
   cli.py         command line entry point
 tests/           pricing checked against textbook values, accounting against fixtures
@@ -261,8 +237,10 @@ tests/           pricing checked against textbook values, accounting against fix
 
 ## Caveats
 
-Quoted prices are the best available answer to "what would this trade at", not a promise of
-one: a bid is what someone is willing to pay for the size shown, and a wide market can move
-away from you between the snapshot and the order. Where no quote exists the model value is
-labelled as such and should be treated as a valuation, never as a fill. Nothing in this
-repository is investment advice.
+The feed is delayed by about fifteen minutes, so every price here is where the market was,
+not where it is. Even live, a bid is only what someone will pay for the size shown, and a
+wide market moves away from you between the quote and the order. Where no quote exists the
+model value is labelled as such and is a valuation, never a fill.
+
+The desk is a calculator, not a broker: it places no orders and holds no credentials, and
+the holdings you enter are yours to keep accurate. Nothing here is investment advice.

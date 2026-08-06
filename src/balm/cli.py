@@ -1,23 +1,20 @@
 """Command line entry point.
 
-    balm doctor            check config, TWS reachability and Flex credentials
+    balm doctor            check the config and that the quote feed answers
     balm plan              model-only snapshot from the [underlyings.plan] blocks
-    balm quotes            delayed-quote snapshot from Cboe, no TWS or account
-    balm sync              live snapshot: TWS marks and greeks + Flex history
-    balm flex --out FILE   download the raw Flex statement for inspection
+    balm quotes            snapshot priced off Cboe's delayed feed
+
+Both snapshot commands write the same schema, so a plan can be diffed against
+what the market actually quotes.
 """
 
 from __future__ import annotations
 
 import argparse
-import json
 import logging
-import socket
 import sys
 from datetime import date, datetime, timedelta
-from pathlib import Path
 
-from .campaign import Trade
 from .config import Config, Underlying
 from .snapshot import StructureSpec, build_underlying_block, new_payload, write_snapshot
 
@@ -161,13 +158,6 @@ def cmd_quotes(config: Config, args: argparse.Namespace) -> int:
     payload["quotesDelayed"] = True
     payload["quoteDelayMinutes"] = NOMINAL_DELAY_MINUTES
 
-    trades: list[Trade] = []
-    if args.flex_file:
-        from .flex import load_trades_file
-
-        trades = load_trades_file(args.flex_file, set(config.symbols()))
-        log.info("Loaded %d trades from %s", len(trades), args.flex_file)
-
     failures = 0
     stamps: list[str] = []
     for u in config.underlyings:
@@ -192,7 +182,6 @@ def cmd_quotes(config: Config, args: argparse.Namespace) -> int:
             anchor_expiries=_anchor_expiry_candidates(u, asof, spec),
             anchor_strikes=strikes,
             weekly_strikes=strikes,
-            trades=trades or None,
             marks=chain.marks(),
             source="cboe",
         )
@@ -219,174 +208,6 @@ def cmd_quotes(config: Config, args: argparse.Namespace) -> int:
     return 1 if failures else 0
 
 
-def cmd_sync(config: Config, args: argparse.Namespace) -> int:
-    from .flex import FlexError, download_trades, merge_trades
-    from .tws import TwsClient
-
-    asof = date.today()
-    symbols = set(config.symbols())
-
-    flex_trades: list[Trade] = []
-    if args.flex_file:
-        from .flex import load_trades_file
-
-        flex_trades = load_trades_file(args.flex_file, symbols)
-        log.info("Loaded %d trades from %s", len(flex_trades), args.flex_file)
-    elif config.flex.query_id and config.flex.token():
-        try:
-            flex_trades = download_trades(config.flex, symbols)
-            log.info("Downloaded %d trades from Flex", len(flex_trades))
-        except FlexError as exc:
-            # A missing history degrades the campaign panel but leaves every
-            # live greek and scenario intact, so this is a warning not a stop.
-            log.warning("Flex download failed, continuing without history: %s", exc)
-    else:
-        log.warning("Flex not configured; campaign history will be unavailable.")
-
-    with TwsClient(config) as client:
-        account = client.account_values()
-        payload = new_payload(asof, account, config)
-        today_trades = client.todays_trades(symbols)
-        trades = merge_trades(flex_trades, today_trades)
-
-        for u in config.underlyings:
-            stock = client.stock_contract(u)
-            spot_quote = client.spot(stock)
-            # The underlying is a reference price for the model, not something
-            # this position trades, so the mid is the right input here. Every
-            # price that does get transacted picks a side instead.
-            spot = spot_quote.mid
-            if not spot:
-                log.error("No usable price for %s; skipping.", u.symbol)
-                continue
-
-            chain = client.option_chain(
-                u,
-                stock,
-                spot,
-                config.model.expirations,
-                config.model.strike_window,
-                rights=("P", "C") if config.model.include_calls else ("P",),
-            )
-            positions = client.positions([u.symbol])
-
-            # Both sides of every market, keyed by contract. Downstream code
-            # picks the side each number needs rather than collapsing to a mid.
-            marks = {(q.symbol, q.kind, q.strike, q.expiry): q.quote for q in chain}
-            for p in positions:
-                p.apply_quote(marks.get((p.symbol, p.kind, p.strike, p.expiry)))
-
-            unquoted = sum(1 for q in chain if not q.quote.two_sided)
-            if unquoted:
-                log.warning(
-                    "%s: %d of %d contracts have no two-sided market; those prices "
-                    "are reported as unavailable.",
-                    u.symbol,
-                    unquoted,
-                    len(chain),
-                )
-
-            spec, plan_spot = _resolve_live_spec(u, positions, chain, spot, asof)
-            if spec is None:
-                log.warning("No put calendar found in %s positions; using plan block.", u.symbol)
-                spec, plan_spot = _spec_from_plan(u, asof)
-
-            strikes = sorted({q.strike for q in chain})
-            block = build_underlying_block(
-                u,
-                spec,
-                spot,
-                asof,
-                config,
-                anchor_expiries=_anchor_expiry_candidates(u, asof, spec),
-                anchor_strikes=strikes,
-                weekly_strikes=strikes,
-                trades=trades,
-                marks=marks,
-                source="live",
-            )
-            block["positions"] = [p.as_dict() for p in positions]
-            block["chain"] = [q.as_dict() for q in chain]
-            block["quote"] = spot_quote.as_dict()
-            payload["underlyings"].append(block)
-
-    path = write_snapshot(payload, config.snapshot_dir, name=args.name)
-    print(f"Wrote live snapshot to {path}")
-    return 0
-
-
-def _resolve_live_spec(
-    u: Underlying, positions, chain, spot: float, asof: date
-) -> tuple[StructureSpec | None, float]:
-    """Infer the calendar from actual holdings.
-
-    The anchor is the longest-dated long put; the income leg is the
-    nearest-dated short put. Anything else in the account is ignored.
-    """
-    puts = [p for p in positions if p.kind == "put" and p.expiry]
-    longs = [p for p in puts if p.quantity > 0]
-    shorts = [p for p in puts if p.quantity < 0]
-    if not longs:
-        return None, spot
-
-    anchor = max(longs, key=lambda p: p.expiry)
-    short = min(shorts, key=lambda p: p.expiry) if shorts else None
-
-    def iv_for(strike, expiry, fallback):
-        # The chain may carry both rights; the put campaign wants the put's IV.
-        q = next(
-            (
-                c
-                for c in chain
-                if c.kind == "put" and c.strike == strike and c.expiry == expiry
-            ),
-            None,
-        )
-        return q.iv if q and q.iv else fallback
-
-    short_expiry = short.expiry if short else _next_friday(asof)
-    short_strike = short.strike if short else spot
-
-    return (
-        StructureSpec(
-            anchor_strike=anchor.strike,
-            anchor_expiry=anchor.expiry,
-            anchor_iv=iv_for(anchor.strike, anchor.expiry, 0.60),
-            short_strike=short_strike,
-            short_expiry=short_expiry,
-            short_iv=iv_for(short_strike, short_expiry, 0.60),
-            contracts=int(abs(anchor.quantity)),
-            # avgCost from IBKR is already per contract including commissions.
-            anchor_debit=anchor.avg_cost * anchor.quantity,
-            short_credit=abs(short.avg_cost) / 100.0 if short else None,
-            vol_beta=float((u.plan or {}).get("vol_beta", 1.5)),
-        ),
-        spot,
-    )
-
-
-def cmd_flex(config: Config, args: argparse.Namespace) -> int:
-    from .flex import FlexError, fetch_statement, request_statement
-
-    token = config.flex.token()
-    if not token or not config.flex.query_id:
-        print("Flex is not configured (need a token and flex.query_id).", file=sys.stderr)
-        return 1
-    try:
-        reference, url = request_statement(token, config.flex.query_id)
-        xml_text = fetch_statement(
-            token, reference, url, config.flex.max_polls, config.flex.poll_seconds
-        )
-    except FlexError as exc:
-        print(f"Flex error: {exc}", file=sys.stderr)
-        return 1
-
-    out = Path(args.out)
-    out.write_text(xml_text)
-    print(f"Wrote Flex statement to {out} ({len(xml_text):,} bytes)")
-    return 0
-
-
 def cmd_doctor(config: Config, args: argparse.Namespace) -> int:
     ok = True
     print(f"Underlyings   : {', '.join(config.symbols())}")
@@ -395,30 +216,24 @@ def cmd_doctor(config: Config, args: argparse.Namespace) -> int:
         state = "configured" if u.plan else "no [underlyings.plan] block (plan mode unavailable)"
         print(f"  {u.symbol:<6} {state}")
 
-    host, port = config.tws.host, config.tws.port
-    try:
-        with socket.create_connection((host, port), timeout=3):
-            print(f"TWS socket    : reachable at {host}:{port}")
-    except OSError as exc:
-        ok = False
-        print(f"TWS socket    : UNREACHABLE at {host}:{port} ({exc})")
-        print("                Start TWS or IB Gateway, then enable")
-        print("                Configure > API > Settings > Enable ActiveX and Socket Clients.")
+    # The only external dependency left is a public feed, so the only thing
+    # worth checking is whether it answers and how stale what it returns is.
+    from .cboe import NOMINAL_DELAY_MINUTES, CboeError, fetch_chain
 
-    if config.flex.token():
-        print(f"Flex token    : present (from ${config.flex.token_env})")
-    else:
-        print(f"Flex token    : missing. export {config.flex.token_env}=...")
-    print(f"Flex query id : {config.flex.query_id or 'not set'}")
+    for u in config.underlyings:
+        try:
+            chain = fetch_chain(u.symbol, config.model.quote_timeout)
+        except CboeError as exc:
+            ok = False
+            print(f"Cboe {u.symbol:<9}: UNREACHABLE ({exc})")
+            continue
+        stamp = chain.as_of.isoformat(sep=" ") if chain.as_of else "no timestamp"
+        print(
+            f"Cboe {u.symbol:<9}: {len(chain.quotes)} contracts, "
+            f"spot {chain.spot:.2f}, quoted {stamp} ET"
+        )
 
-    try:
-        import ib_async  # noqa: F401
-
-        print("ib_async      : installed")
-    except ImportError:
-        ok = False
-        print("ib_async      : NOT installed (pip install -e .)")
-
+    print(f"Quote delay   : ~{NOMINAL_DELAY_MINUTES} min — indicative, not executable")
     print(f"Snapshot dir  : {config.snapshot_dir.resolve()}")
     return 0 if ok else 1
 
@@ -432,27 +247,17 @@ def main(argv: list[str] | None = None) -> int:
     p_doctor = sub.add_parser("doctor", help="check configuration and connectivity")
     p_doctor.set_defaults(func=cmd_doctor)
 
-    p_plan = sub.add_parser("plan", help="model-only snapshot, no TWS required")
+    p_plan = sub.add_parser("plan", help="model-only snapshot, no market data")
     p_plan.add_argument("--asof", help="YYYY-MM-DD, defaults to today")
     p_plan.add_argument("--name", default="latest")
     p_plan.set_defaults(func=cmd_plan)
 
     p_quotes = sub.add_parser(
-        "quotes", help="delayed-quote snapshot from Cboe, no TWS or credentials"
+        "quotes", help="snapshot priced off Cboe's delayed feed"
     )
     p_quotes.add_argument("--asof", help="YYYY-MM-DD, defaults to today")
-    p_quotes.add_argument("--flex-file", help="fold in a saved Flex XML for campaign history")
     p_quotes.add_argument("--name", default="latest")
     p_quotes.set_defaults(func=cmd_quotes)
-
-    p_sync = sub.add_parser("sync", help="live snapshot from TWS and Flex")
-    p_sync.add_argument("--flex-file", help="use a saved Flex XML instead of downloading")
-    p_sync.add_argument("--name", default="latest")
-    p_sync.set_defaults(func=cmd_sync)
-
-    p_flex = sub.add_parser("flex", help="download the raw Flex statement")
-    p_flex.add_argument("--out", default="data/flex-statement.xml")
-    p_flex.set_defaults(func=cmd_flex)
 
     args = parser.parse_args(argv)
     logging.basicConfig(

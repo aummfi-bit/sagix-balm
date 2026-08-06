@@ -1,17 +1,13 @@
 import type { Market } from "./markets";
 import { executable, quoteFor, type OptionKind } from "./pricing";
-import type { BalmSnapshot } from "./snapshot";
 
 /**
  * What you are holding, per underlying.
  *
- * Two sources, deliberately kept apart. `sync` rows come from the account via
- * `balm sync` and are replaced wholesale on every refresh; `manual` rows are
- * typed into the desk and live only in this browser. Nothing here is ever sent
- * anywhere — the balm connection to IBKR is read-only and places no orders.
+ * Typed in and kept in this browser. There is no broker connection to read
+ * positions from and nothing is ever sent anywhere: the desk knows what you
+ * tell it, and prices it off the public quote feed.
  */
-export type HoldingSource = "sync" | "manual";
-
 export type OptionHolding = {
   id: string;
   kind: OptionKind;
@@ -21,27 +17,19 @@ export type OptionHolding = {
   quantity: number;
   /** Fill price per share, if known. */
   price: number | null;
-  source: HoldingSource;
 };
 
 export type Holdings = {
   shares: number;
   cash: number;
   options: OptionHolding[];
-  /** True once a sync has supplied the share count and cash. */
-  fromSync: boolean;
 };
 
 export type HoldingsBySymbol = Record<string, Holdings>;
 
 const STORAGE_KEY = "sagix-balm.holdings.v1";
 
-export const EMPTY_HOLDINGS: Holdings = {
-  shares: 0,
-  cash: 0,
-  options: [],
-  fromSync: false,
-};
+export const EMPTY_HOLDINGS: Holdings = { shares: 0, cash: 0, options: [] };
 
 export function holdingsFor(
   all: HoldingsBySymbol,
@@ -54,7 +42,6 @@ export function newId(): string {
   return Math.random().toString(36).slice(2, 10);
 }
 
-/** Manual rows only: synced ones are re-derived, not remembered. */
 function loadHoldings(): HoldingsBySymbol {
   if (typeof window === "undefined") return EMPTY_ALL;
   try {
@@ -68,14 +55,7 @@ function loadHoldings(): HoldingsBySymbol {
 function persist(all: HoldingsBySymbol): void {
   if (typeof window === "undefined") return;
   try {
-    const manualOnly: HoldingsBySymbol = {};
-    for (const [symbol, h] of Object.entries(all)) {
-      manualOnly[symbol] = {
-        ...h,
-        options: h.options.filter((o) => o.source === "manual"),
-      };
-    }
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(manualOnly));
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(all));
   } catch {
     // A full or blocked localStorage is not worth breaking the desk over.
   }
@@ -114,59 +94,6 @@ export function setHoldings(next: HoldingsBySymbol): void {
   cache = next;
   persist(next);
   for (const listener of listeners) listener();
-}
-
-/**
- * Fold a fresh snapshot into the current holdings.
- *
- * Synced rows are replaced outright so a closed position disappears rather
- * than lingering; manual rows are left alone. Share count and cash are only
- * overwritten when the snapshot actually carries them, so a model refresh does
- * not wipe numbers the user typed in.
- */
-export function mergeSnapshotHoldings(
-  current: HoldingsBySymbol,
-  snap: BalmSnapshot,
-): HoldingsBySymbol {
-  const next: HoldingsBySymbol = { ...current };
-  const cash = snap.account?.TotalCashValue;
-
-  for (const u of snap.underlyings) {
-    const existing = next[u.symbol] ?? EMPTY_HOLDINGS;
-    const positions = u.positions ?? [];
-    const isLive = u.source === "live";
-
-    const stock = positions.find((p) => p.secType === "STK");
-    const options: OptionHolding[] = positions
-      .filter(
-        (p) =>
-          p.secType === "OPT" &&
-          (p.kind === "put" || p.kind === "call") &&
-          p.strike != null &&
-          p.expiry != null,
-      )
-      .map((p) => ({
-        id: `sync-${u.symbol}-${p.kind}-${p.strike}-${p.expiry}`,
-        kind: p.kind as OptionKind,
-        strike: p.strike as number,
-        expiry: p.expiry as string,
-        quantity: p.quantity,
-        // IBKR reports avgCost per contract; the desk works per share.
-        price: p.avgCost ? Math.abs(p.avgCost) / (p.multiplier || 100) : null,
-        source: "sync" as const,
-      }));
-
-    next[u.symbol] = {
-      shares: stock ? stock.quantity : existing.shares,
-      cash: cash ?? existing.cash,
-      options: [
-        ...options,
-        ...existing.options.filter((o) => o.source === "manual"),
-      ],
-      fromSync: isLive && (stock != null || cash != null),
-    };
-  }
-  return next;
 }
 
 /**

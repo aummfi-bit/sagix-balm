@@ -7,7 +7,6 @@ from datetime import date, timedelta
 import pytest
 
 from balm.campaign import Trade, analyze_campaign, weekly_history
-from balm.flex import merge_trades, parse_trades
 from balm.quotes import Quote
 
 SYM = "GLXY"
@@ -224,66 +223,3 @@ def test_weekly_history_runs_a_cumulative_total():
     assert rows[-1]["cumulative"] == pytest.approx(3 * (1.20 * 100 - 0.65))
     # The anchor must never appear as an income leg.
     assert all(r["strike"] == 22.0 for r in rows)
-
-
-FLEX_XML = """<?xml version="1.0" encoding="UTF-8"?>
-<FlexQueryResponse queryName="Trades" type="AF">
- <FlexStatements count="1">
-  <FlexStatement accountId="U1234567" fromDate="20260701" toDate="20260805">
-   <Trades>
-    <Trade assetCategory="OPT" symbol="GLXY  270115P00022500" underlyingSymbol="GLXY"
-      putCall="P" strike="22.5" expiry="20270115" multiplier="100"
-      quantity="1" tradePrice="5.49" ibCommission="-1.05" tradeDate="20260701"
-      buySell="BUY" tradeID="7001" notes="O"/>
-    <Trade assetCategory="OPT" symbol="GLXY  260710P00022000" underlyingSymbol="GLXY"
-      putCall="P" strike="22" expiry="20260710" multiplier="100"
-      quantity="-1" tradePrice="1.20" ibCommission="-0.65" tradeDate="20260706"
-      buySell="SELL" tradeID="7002" notes="O"/>
-    <Trade assetCategory="STK" symbol="GLXY" underlyingSymbol="GLXY"
-      quantity="100" tradePrice="22.10" ibCommission="-1.00" tradeDate="20260706"
-      buySell="BUY" tradeID="7003"/>
-    <Trade assetCategory="OPT" symbol="IBIT  260814P00035000" underlyingSymbol="IBIT"
-      putCall="P" strike="35" expiry="20260814" multiplier="100"
-      quantity="-1" tradePrice="0.38" ibCommission="-0.65" tradeDate="20260803"
-      buySell="SELL" tradeID="7004" notes="O"/>
-   </Trades>
-  </FlexStatement>
- </FlexStatements>
-</FlexQueryResponse>
-"""
-
-
-def test_flex_parsing_extracts_options_and_skips_stock():
-    trades = parse_trades(FLEX_XML)
-    assert len(trades) == 3  # the stock row is dropped
-    assert {t.symbol for t in trades} == {"GLXY", "IBIT"}
-
-    anchor = next(t for t in trades if t.expiry == ANCHOR_EXPIRY)
-    assert anchor.quantity == 1
-    assert anchor.strike == 22.5
-    assert anchor.commission == pytest.approx(-1.05)
-    assert anchor.cash_flow == pytest.approx(-550.05)
-
-
-def test_flex_symbol_filter_uses_the_underlying_not_the_osi_string():
-    trades = parse_trades(FLEX_XML, symbols={"IBIT"})
-    assert len(trades) == 1
-    assert trades[0].symbol == "IBIT"
-
-
-def test_flex_and_tws_trades_deduplicate_on_execution_id():
-    flex = parse_trades(FLEX_XML, symbols={"GLXY"})
-    # The same fill also arrives from today's TWS session.
-    dupe = Trade(
-        symbol="GLXY",
-        trade_date=date(2026, 7, 6),
-        quantity=-1,
-        price=1.20,
-        commission=-0.65,
-        kind="put",
-        strike=22.0,
-        expiry=date(2026, 7, 10),
-        trade_id="7002",
-    )
-    merged = merge_trades(flex, [dupe])
-    assert len(merged) == len(flex)

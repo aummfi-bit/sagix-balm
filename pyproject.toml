@@ -5,10 +5,9 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "sagix-balm"
 version = "0.1.0"
-description = "Put-calendar / diagonal campaign tracker fed by Interactive Brokers"
+description = "Put and call calendar desk priced off Cboe's delayed quote feed"
 requires-python = ">=3.11"
 dependencies = [
-    "ib_async>=2.1.0",
     "requests>=2.32",
 ]
 

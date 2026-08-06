@@ -38,6 +38,7 @@ import {
   type Holdings,
 } from "@/lib/holdings";
 import type { DeskData } from "@/lib/snapshot";
+import { applyQuotes, useLiveQuotes } from "@/lib/useLiveQuotes";
 import { HoldingsPanel } from "./HoldingsPanel";
 import { QuoteStatus } from "./QuoteStatus";
 import { ScenarioChart } from "./ScenarioChart";
@@ -807,10 +808,10 @@ const PANELS = [
  * the quote feed is up and how old these prices are.
  */
 export function CalendarDesk({ initial }: { initial?: DeskData }) {
-  const markets = initial?.markets ?? MARKETS;
+  const snapshotMarkets = initial?.markets ?? MARKETS;
   const asof = initial?.asof ?? ASOF;
 
-  const [active, setActive] = useState(markets[0]?.symbol ?? "GLXY");
+  const [active, setActive] = useState(snapshotMarkets[0]?.symbol ?? "GLXY");
   const [panel, setPanel] = useState<OptionKind | null>("put");
   const [selections, setSelections] = useState<Record<string, Selection>>({
     ...DEFAULTS,
@@ -823,6 +824,15 @@ export function CalendarDesk({ initial }: { initial?: DeskData }) {
     getHoldings,
     getServerHoldings,
   );
+
+  // The committed snapshot paints first; the feed then keeps it current.
+  const { update, state: feedState, error: feedError } = useLiveQuotes(active);
+  const markets = useMemo(() => {
+    if (!update) return snapshotMarkets;
+    return snapshotMarkets.map((m) =>
+      m.symbol === update.symbol ? applyQuotes(m, update) : m,
+    );
+  }, [snapshotMarkets, update]);
 
   const market = markets.find((m) => m.symbol === active) ?? markets[0];
 
@@ -842,7 +852,7 @@ export function CalendarDesk({ initial }: { initial?: DeskData }) {
     [market, sel, asof, panel],
   );
 
-  const update = (next: Selection) =>
+  const updateSelection = (next: Selection) =>
     setSelections((prev) => ({ ...prev, [selKey(panel ?? "put")]: next }));
 
   const updateHoldings = (next: Holdings) =>
@@ -851,11 +861,12 @@ export function CalendarDesk({ initial }: { initial?: DeskData }) {
   return (
     <div className="mx-auto w-full max-w-6xl space-y-10 px-4 pb-10 pt-0 sm:px-6 lg:px-8">
       <QuoteStatus
-        symbol={market.symbol}
-        quoteSource={initial?.quoteSource ?? null}
-        // Per-market, since the feed stamps each symbol separately.
-        quotesAsOf={market.quotesAsOf ?? initial?.quotesAsOf ?? null}
-        delayMinutes={initial?.quoteDelayMinutes ?? null}
+        state={feedState}
+        error={feedError}
+        // Per-market: the feed stamps each symbol separately, so reporting the
+        // newest for both would overstate the older one.
+        quotesAsOf={market.quotesAsOf ?? null}
+        delayMinutes={initial?.quoteDelayMinutes ?? 15}
       />
 
       <header className="space-y-3 pt-6">
@@ -930,7 +941,7 @@ export function CalendarDesk({ initial }: { initial?: DeskData }) {
           <h2 className="mb-6 text-xl font-semibold text-[var(--text-strong)]">
             {panel === "put" ? "Put calendar" : "Call calendar"} · {market.symbol}
           </h2>
-          <CalendarPanel model={model} onChange={update} />
+          <CalendarPanel model={model} onChange={updateSelection} />
         </section>
       ) : null}
 

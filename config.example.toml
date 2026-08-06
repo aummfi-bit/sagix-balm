@@ -1,5 +1,5 @@
-# Copy to config.toml and edit. config.toml is gitignored because the Flex
-# token grants read access to your entire account history.
+# Copy to config.toml and edit. Nothing in here is a credential: prices come
+# from Cboe's public delayed feed, which needs no account and no key.
 
 snapshot_dir = "data/snapshots"
 
@@ -8,12 +8,11 @@ snapshot_dir = "data/snapshots"
 
 [[underlyings]]
 symbol = "GLXY"
-primary_exchange = "NASDAQ"
 label = "Galaxy Digital"
 
-# The plan block describes the structure to model when running `balm plan`
-# without TWS. `balm sync` ignores it whenever it can infer the real position
-# from your holdings. Volatilities are decimals: 0.98 means 98%.
+# The plan block names the structure to model. `balm plan` uses all of it;
+# `balm quotes` keeps the strikes and expiries but takes spot and implied
+# volatility from the feed. Volatilities are decimals: 0.98 means 98%.
 [underlyings.plan]
 spot = 22.70
 anchor_strike = 22.5
@@ -39,7 +38,6 @@ iv = 0.90
 
 [[underlyings]]
 symbol = "IBIT"
-primary_exchange = "NASDAQ"
 label = "iShares Bitcoin Trust"
 
 [underlyings.plan]
@@ -61,32 +59,13 @@ iv = 0.421
 expiry = 2028-01-21
 iv = 0.478
 
-[tws]
-host = "127.0.0.1"
-# 7497 TWS paper / 7496 TWS live / 4002 Gateway paper / 4001 Gateway live
-port = 7497
-client_id = 17
-# Leave unset to use the first managed account the connection reports.
-# account = "U1234567"
-market_data_type = 2
-
-[flex]
-# Client Portal > Performance & Reports > Flex Queries.
-# Build a Trades query including underlyingSymbol, assetCategory, putCall,
-# strike, expiry, quantity, tradePrice, ibCommission, tradeDate, multiplier,
-# notes and tradeID.
-# query_id = "123456"
-token_env = "IBKR_FLEX_TOKEN"
-
 [model]
 risk_free_rate = 0.04
 dividend_yield = 0.0
 binomial_steps = 240
 strike_window = 0.25
 expirations = 8
-# Pull the call chain as well, so the desk's call panel has real quotes rather
-# than blanks. Doubles the contracts requested per sync.
-include_calls = true
+quote_timeout = 20.0
 
 [rules]
 # Monday=0. Never carry an open short weekly past this weekday.
