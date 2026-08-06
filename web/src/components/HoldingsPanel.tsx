@@ -40,17 +40,12 @@ export function CashPanel({
         </span>
       </div>
       <div className="max-w-xs">
-        <Field label="Cash available">
-          <input
-            type="number"
-            step="0.01"
-            value={holdings.cash}
-            onChange={(e) =>
-              onChange({ ...holdings, cash: Number(e.target.value) || 0 })
-            }
-            className={inputClass}
-          />
-        </Field>
+        <NumberField
+          label="Cash available"
+          value={holdings.cash}
+          digits={2}
+          onChange={(cash) => onChange({ ...holdings, cash })}
+        />
       </div>
       <p className="text-xs text-[var(--text-dim)]">
         What you are holding back to cover assignment if a short put is
@@ -72,6 +67,48 @@ function Field({
       <span className={labelClass}>{label}</span>
       {children}
     </label>
+  );
+}
+
+/**
+ * A number input that reads with thousands separators, like every other
+ * figure on the desk. Native `type="number"` can't display those and stay
+ * editable, so this shows the raw value while focused and the formatted one
+ * once you click away.
+ */
+function NumberField({
+  label,
+  value,
+  digits,
+  onChange,
+}: {
+  label: string;
+  value: number;
+  digits: number;
+  onChange: (v: number) => void;
+}) {
+  const [focused, setFocused] = useState(false);
+  const [draft, setDraft] = useState(() => String(value));
+
+  return (
+    <Field label={label}>
+      <input
+        type="text"
+        inputMode="decimal"
+        value={focused ? draft : num(value, digits)}
+        onFocus={() => {
+          setDraft(String(value));
+          setFocused(true);
+        }}
+        onChange={(e) => {
+          setDraft(e.target.value);
+          const parsed = Number(e.target.value.replace(/,/g, ""));
+          if (Number.isFinite(parsed)) onChange(parsed);
+        }}
+        onBlur={() => setFocused(false)}
+        className={inputClass}
+      />
+    </Field>
   );
 }
 
@@ -230,17 +267,12 @@ export function HoldingsPanel({
           </div>
         </div>
 
-        <Field label="Shares held">
-          <input
-            type="number"
-            step="1"
-            value={holdings.shares}
-            onChange={(e) =>
-              onChange({ ...holdings, shares: Number(e.target.value) || 0 })
-            }
-            className={inputClass}
-          />
-        </Field>
+        <NumberField
+          label="Shares held"
+          value={holdings.shares}
+          digits={0}
+          onChange={(shares) => onChange({ ...holdings, shares })}
+        />
 
         <div className="rounded-md border border-[var(--border)] bg-[var(--bg)] px-4 py-3">
           <div className="font-mono text-xl tabular-nums text-[var(--text-strong)]">
