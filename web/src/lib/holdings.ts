@@ -1,5 +1,12 @@
 import type { Market } from "./markets";
-import { executable, quoteFor, type OptionKind } from "./pricing";
+import {
+  daysFrom,
+  executable,
+  ivFor,
+  optionGreeks,
+  quoteFor,
+  type OptionKind,
+} from "./pricing";
 
 /**
  * What you are holding, per underlying.
@@ -112,4 +119,26 @@ export function holdingValue(
 
 export function holdingCost(holding: OptionHolding): number | null {
   return holding.price == null ? null : holding.price * holding.quantity * 100;
+}
+
+/**
+ * Cash, stock, and every option repriced by Black-Scholes at a hypothetical
+ * spot — implied vol and days to expiry held at today's values, so this is
+ * spot sensitivity alone, not a projection forward in time. Model prices
+ * rather than quotes, because the feed has no book for spots that aren't the
+ * one actually trading right now.
+ */
+export function portfolioValueAt(
+  holdings: Holdings,
+  market: Market,
+  asof: string,
+  spot: number,
+): number {
+  const optionsValue = holdings.options.reduce((sum, o) => {
+    const dte = Math.max(daysFrom(o.expiry, asof), 0);
+    const iv = ivFor(market, o.expiry);
+    const price = optionGreeks(o.kind, spot, o.strike, dte / 365, iv).price;
+    return sum + price * o.quantity * 100;
+  }, 0);
+  return holdings.cash + holdings.shares * spot + optionsValue;
 }

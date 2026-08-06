@@ -41,6 +41,7 @@ import {
 import type { DeskData } from "@/lib/snapshot";
 import { applyQuotes, useLiveQuotes } from "@/lib/useLiveQuotes";
 import { CashPanel, HoldingsPanel } from "./HoldingsPanel";
+import { HoldingsChart } from "./HoldingsChart";
 import { QuoteStatus } from "./QuoteStatus";
 import { ScenarioChart } from "./ScenarioChart";
 
@@ -914,6 +915,12 @@ export function CalendarDesk({ initial }: { initial?: DeskData }) {
         market={market}
         holdings={holdingsFor(holdings, market.symbol)}
         onChange={updateHoldings}
+      />
+
+      <HoldingsChart
+        market={market}
+        holdings={holdingsFor(holdings, market.symbol)}
+        asof={asof}
       />
 
       <div className="flex flex-wrap items-center gap-2">
