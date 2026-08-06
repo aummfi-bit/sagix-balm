@@ -2,6 +2,7 @@
 
     balm doctor            check config, TWS reachability and Flex credentials
     balm plan              model-only snapshot from the [underlyings.plan] blocks
+    balm quotes            delayed-quote snapshot from Cboe, no TWS or account
     balm sync              live snapshot: TWS marks and greeks + Flex history
     balm flex --out FILE   download the raw Flex statement for inspection
 """
@@ -110,6 +111,112 @@ def cmd_plan(config: Config, args: argparse.Namespace) -> int:
     path = write_snapshot(payload, config.snapshot_dir, name=args.name)
     print(f"Wrote model snapshot for {', '.join(config.symbols())} to {path}")
     return 0
+
+
+def _spec_from_chain(u: Underlying, chain, asof: date) -> StructureSpec:
+    """The planned structure, repriced against the strikes Cboe actually lists.
+
+    The plan block says which legs to model; everything numeric about them --
+    spot, implied volatility -- comes from the feed, because a plan written
+    weeks ago carries a spot that has since moved.
+    """
+    spec, _plan_spot = _spec_from_plan(u, asof)
+    index = chain.marks_index
+
+    def iv_for(strike: float, expiry: date, fallback: float) -> float:
+        q = index.get((chain.symbol, "put", strike, expiry))
+        return q.iv if q and q.iv else fallback
+
+    for label, strike, expiry in (
+        ("anchor", spec.anchor_strike, spec.anchor_expiry),
+        ("short", spec.short_strike, spec.short_expiry),
+    ):
+        if (chain.symbol, "put", strike, expiry) not in index:
+            log.warning(
+                "%s %s leg %.2fP %s is not listed in the Cboe chain; its prices "
+                "will be reported as unquoted.",
+                u.symbol,
+                label,
+                strike,
+                expiry,
+            )
+
+    spec.anchor_iv = iv_for(spec.anchor_strike, spec.anchor_expiry, spec.anchor_iv)
+    spec.short_iv = iv_for(spec.short_strike, spec.short_expiry, spec.short_iv)
+    return spec
+
+
+def cmd_quotes(config: Config, args: argparse.Namespace) -> int:
+    """Snapshot built from Cboe's delayed feed: no TWS, no account, no secrets.
+
+    This is the one path that runs anywhere -- a laptop, a cron job, a cloud
+    runner -- because it authenticates against nothing. It gives real prices
+    for the chain and nothing at all about the account.
+    """
+    from .cboe import NOMINAL_DELAY_MINUTES, CboeError, fetch_chain
+
+    asof = _as_date(args.asof) if args.asof else date.today()
+    payload = new_payload(asof, None, config)
+    payload["quoteSource"] = "cboe"
+    payload["quotesDelayed"] = True
+    payload["quoteDelayMinutes"] = NOMINAL_DELAY_MINUTES
+
+    trades: list[Trade] = []
+    if args.flex_file:
+        from .flex import load_trades_file
+
+        trades = load_trades_file(args.flex_file, set(config.symbols()))
+        log.info("Loaded %d trades from %s", len(trades), args.flex_file)
+
+    failures = 0
+    stamps: list[str] = []
+    for u in config.underlyings:
+        try:
+            chain = fetch_chain(u.symbol, config.model.quote_timeout)
+        except CboeError as exc:
+            failures += 1
+            log.error("%s: %s", u.symbol, exc)
+            continue
+
+        if chain.as_of:
+            stamps.append(chain.as_of.isoformat(sep=" "))
+
+        spec = _spec_from_chain(u, chain, asof)
+        strikes = chain.strikes(config.model.strike_window)
+        block = build_underlying_block(
+            u,
+            spec,
+            chain.spot,
+            asof,
+            config,
+            anchor_expiries=_anchor_expiry_candidates(u, asof, spec),
+            anchor_strikes=strikes,
+            weekly_strikes=strikes,
+            trades=trades or None,
+            marks=chain.marks(),
+            source="cboe",
+        )
+        # Publish only the near-the-money slice. The full chain runs to
+        # thousands of contracts, nearly all of them strikes the desk will
+        # never show, and the snapshot is a file that gets committed.
+        window = set(strikes)
+        block["chain"] = [q.as_dict() for q in chain.quotes if q.strike in window]
+        block["quote"] = chain.underlying.as_dict()
+        block["iv30"] = chain.iv30
+        block["quotesAsOf"] = chain.as_of.isoformat(sep=" ") if chain.as_of else None
+        payload["underlyings"].append(block)
+
+    if not payload["underlyings"]:
+        print("No chains could be fetched from Cboe.", file=sys.stderr)
+        return 1
+
+    payload["quotesAsOf"] = max(stamps) if stamps else None
+    path = write_snapshot(payload, config.snapshot_dir, name=args.name)
+    print(
+        f"Wrote delayed-quote snapshot to {path} "
+        f"(Cboe, as of {payload['quotesAsOf'] or 'unknown'} ET, ~{NOMINAL_DELAY_MINUTES} min behind)"
+    )
+    return 1 if failures else 0
 
 
 def cmd_sync(config: Config, args: argparse.Namespace) -> int:
@@ -329,6 +436,14 @@ def main(argv: list[str] | None = None) -> int:
     p_plan.add_argument("--asof", help="YYYY-MM-DD, defaults to today")
     p_plan.add_argument("--name", default="latest")
     p_plan.set_defaults(func=cmd_plan)
+
+    p_quotes = sub.add_parser(
+        "quotes", help="delayed-quote snapshot from Cboe, no TWS or credentials"
+    )
+    p_quotes.add_argument("--asof", help="YYYY-MM-DD, defaults to today")
+    p_quotes.add_argument("--flex-file", help="fold in a saved Flex XML for campaign history")
+    p_quotes.add_argument("--name", default="latest")
+    p_quotes.set_defaults(func=cmd_quotes)
 
     p_sync = sub.add_parser("sync", help="live snapshot from TWS and Flex")
     p_sync.add_argument("--flex-file", help="use a saved Flex XML instead of downloading")

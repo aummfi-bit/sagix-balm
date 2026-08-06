@@ -53,6 +53,8 @@ class ModelConfig:
     # Also pull the call chain, so the desk's call panel has real quotes behind
     # it. Doubles the contracts requested per sync; turn off if that is slow.
     include_calls: bool = True
+    # Seconds to wait on the delayed-quote feed used by `balm quotes`.
+    quote_timeout: float = 20.0
 
 
 @dataclass

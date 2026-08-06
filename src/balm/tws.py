@@ -20,50 +20,9 @@ from typing import Any, Iterable
 
 from .campaign import Trade
 from .config import Config, Underlying
-from .quotes import Quote, closing_side
+from .quotes import OptionQuote, Quote, closing_side
 
 log = logging.getLogger(__name__)
-
-
-@dataclass
-class OptionQuote:
-    symbol: str
-    kind: str
-    strike: float
-    expiry: date
-    con_id: int
-    quote: Quote = field(default_factory=Quote)
-    iv: float | None = None
-    delta: float | None = None
-    gamma: float | None = None
-    theta: float | None = None
-    vega: float | None = None
-    open_interest: float | None = None
-    undPrice: float | None = None
-
-    def as_dict(self) -> dict[str, Any]:
-        return {
-            "symbol": self.symbol,
-            "kind": self.kind,
-            "strike": self.strike,
-            "expiry": self.expiry.isoformat(),
-            "conId": self.con_id,
-            "bid": self.quote.bid,
-            "ask": self.quote.ask,
-            "last": self.quote.last,
-            "mid": self.quote.mid,
-            "spreadPct": self.quote.spread_pct,
-            "twoSided": self.quote.two_sided,
-            # The side you would actually trade, so a consumer never has to
-            # guess which half of the market applies to it.
-            "buyAt": self.quote.executable("buy"),
-            "sellAt": self.quote.executable("sell"),
-            "iv": self.iv,
-            "delta": self.delta,
-            "gamma": self.gamma,
-            "theta": self.theta,
-            "vega": self.vega,
-        }
 
 
 @dataclass

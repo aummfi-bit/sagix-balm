@@ -27,6 +27,12 @@ export type Market = {
    * dash until a sync fills them in.
    */
   quotes?: Record<string, QuoteSides>;
+  /**
+   * When the feed stamped *this* underlying's quotes. Per-market because the
+   * CDN caches each symbol separately, so two tickers in one snapshot can be
+   * an hour apart — reporting the newest for both would overstate the older.
+   */
+  quotesAsOf?: string | null;
 };
 
 export type Selection = {

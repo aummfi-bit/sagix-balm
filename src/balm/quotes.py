@@ -19,7 +19,8 @@ Not the mid, not the last trade, not a model value dressed up as a fill.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from datetime import date
 from typing import Any, Literal
 
 Side = Literal["buy", "sell"]
@@ -116,6 +117,59 @@ class Quote:
             "spread": self.spread,
             "spreadPct": self.spread_pct,
             "twoSided": self.two_sided,
+        }
+
+
+@dataclass
+class OptionQuote:
+    """One contract's market, wherever it came from.
+
+    Both quote sources fill this in: TWS from a live session, Cboe from the
+    delayed public feed. The greeks are whatever the source published; the
+    package's own model recomputes them from ``iv`` when it needs them on its
+    own terms.
+    """
+
+    symbol: str
+    kind: str
+    strike: float
+    expiry: date
+    con_id: int = 0
+    quote: Quote = field(default_factory=Quote)
+    iv: float | None = None
+    delta: float | None = None
+    gamma: float | None = None
+    theta: float | None = None
+    vega: float | None = None
+    open_interest: float | None = None
+    undPrice: float | None = None
+
+    def key(self) -> tuple:
+        return (self.symbol, self.kind, self.strike, self.expiry)
+
+    def as_dict(self) -> dict[str, Any]:
+        return {
+            "symbol": self.symbol,
+            "kind": self.kind,
+            "strike": self.strike,
+            "expiry": self.expiry.isoformat(),
+            "conId": self.con_id,
+            "bid": self.quote.bid,
+            "ask": self.quote.ask,
+            "last": self.quote.last,
+            "mid": self.quote.mid,
+            "spreadPct": self.quote.spread_pct,
+            "twoSided": self.quote.two_sided,
+            # The side you would actually trade, so a consumer never has to
+            # guess which half of the market applies to it.
+            "buyAt": self.quote.executable("buy"),
+            "sellAt": self.quote.executable("sell"),
+            "iv": self.iv,
+            "delta": self.delta,
+            "gamma": self.gamma,
+            "theta": self.theta,
+            "vega": self.vega,
+            "openInterest": self.open_interest,
         }
 
 

@@ -17,11 +17,17 @@ Interactive Next.js desk lives in [`web/`](web/). Pick a ticker, see what you ho
 then open either calendar:
 
 ```
+● Cboe feed reachable · quoted 06 Aug 15:49 ET · delayed ~15 min
 [GLXY] [IBIT]                 ticker
 ┌─ Holdings ──────────────┐   price, shares, stock value, cash, and your option lines
 [▾ Puts] [▸ Calls]            one panel per right, collapsible
 ┌─ Put calendar ──────────┐   greeks, term structure, scenarios, ladder, roll checklist
 ```
+
+The status line is the only thing at the top: a green light when the quote feed answers,
+red when it does not, the timestamp on the prices actually being displayed, and the delay.
+There is no refresh button — refreshing means `balm quotes` (or `balm sync`) writing a new
+snapshot, which a page view cannot do. The desk renders the committed snapshot.
 
 The holdings panel shows the share count and cash from the last `balm sync`, plus any
 option lines you add by hand. Manual lines are stored in your browser and never sent
@@ -111,6 +117,7 @@ export IBKR_FLEX_TOKEN=...          # never put this in config.toml
 ```bash
 balm doctor                  # check config, TWS reachability, Flex credentials
 balm plan                    # model-only snapshot from [underlyings.plan], no TWS needed
+balm quotes                  # delayed-quote snapshot from Cboe: no TWS, no credentials
 balm sync                    # live snapshot: TWS marks and greeks + Flex history
 balm sync --flex-file f.xml  # use a saved statement instead of downloading
 balm flex --out f.xml        # download the raw Flex statement
@@ -122,6 +129,25 @@ dated copy, so a plan can be diffed against reality later.
 `sync` infers the structure from your actual holdings — the anchor is the longest-dated
 long put, the income leg is the nearest-dated short put — and falls back to the
 `[underlyings.plan]` block when it finds no calendar.
+
+## Two quote sources
+
+| | `balm sync` | `balm quotes` |
+| --- | --- | --- |
+| Source | TWS / IB Gateway | Cboe's public delayed feed |
+| Needs | A logged-in gateway on the same machine | Nothing — an unauthenticated GET |
+| Freshness | Live | ~15 minutes behind, self-timestamped |
+| Gives | Chain, positions, cash, today's fills | Chain and the underlying's price only |
+| Runs on | Wherever the gateway runs | Anywhere: laptop, cron, cloud runner |
+
+`balm quotes` is what makes an unattended refresh possible. It takes spot, implied
+volatility and both sides of every quote from Cboe, writes the same snapshot schema, and
+labels everything `cboe` with the feed's own timestamp so nothing gets mistaken for live.
+It knows nothing about your account: no positions, no cash, no fills — those need `sync`
+or a Flex statement (`balm quotes --flex-file statement.xml` folds in a saved one).
+
+Delayed quotes are for knowing where you stand, not for pricing a roll to the cent. The
+desk says so on every page.
 
 ## Configuration
 
@@ -219,6 +245,7 @@ offsets it.
 src/balm/
   pricing.py     Black-Scholes, CRR binomial, IV solver, early-exercise premium
   quotes.py      two-sided markets and the side each transaction prices at
+  cboe.py        delayed public quote feed: chain, greeks, spot, no credentials
   structure.py   calendar greeks, term-structure vol shocks, scenarios, roll rules
   campaign.py    signed cash-flow accounting over the trade history
   tws.py         ib_async client: account, positions, chains with greeks, today's fills

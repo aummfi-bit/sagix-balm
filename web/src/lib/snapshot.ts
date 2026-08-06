@@ -13,12 +13,19 @@ export type BalmSnapshot = {
   generatedAt: string;
   asof: string;
   account?: Record<string, number>;
+  /** Where the prices came from: "cboe" for the delayed public feed. */
+  quoteSource?: string;
+  quotesDelayed?: boolean;
+  quoteDelayMinutes?: number;
+  /** Feed's own timestamp, naive US/Eastern, as published. */
+  quotesAsOf?: string | null;
   underlyings: Array<{
     symbol: string;
     label?: string;
     source?: string;
     spot: number;
     volBeta?: number;
+    quotesAsOf?: string | null;
     positions?: Array<{
       symbol: string;
       secType: string;
@@ -94,7 +101,18 @@ export type DeskData = {
   command: string;
   markets: Market[];
   selections: Record<string, Selection>;
+  /** How the prices in these markets were obtained, and how stale they are. */
+  quoteSource: string | null;
+  quotesDelayed: boolean;
+  quoteDelayMinutes: number | null;
+  quotesAsOf: string | null;
 };
+
+function sourceLabel(source: string | undefined): string {
+  if (source === "live") return "balm sync";
+  if (source === "cboe") return "balm quotes · Cboe delayed";
+  return "balm plan";
+}
 
 function mergeTenors(
   base: Tenor[],
@@ -169,14 +187,12 @@ export function deskDataFromSnapshot(
       label: u.label ?? m.label,
       spot: u.spot,
       volBeta: u.volBeta ?? m.volBeta,
-      source:
-        u.source === "live"
-          ? `balm sync · ${snap.generatedAt}`
-          : `balm plan · ${snap.generatedAt}`,
+      source: `${sourceLabel(u.source)} · ${snap.generatedAt}`,
       tenors: mergeTenors(m.tenors, patches),
       // Always reassigned, so a model refresh clears stale quotes rather than
       // leaving yesterday's book attached to today's prices.
       quotes: quotesFrom(u),
+      quotesAsOf: u.quotesAsOf ?? null,
     };
   });
 
@@ -201,6 +217,7 @@ export function deskDataFromSnapshot(
         { expiry: anchor.expiry, iv: anchor.iv },
       ],
       quotes: quotesFrom(u),
+      quotesAsOf: u.quotesAsOf ?? null,
     });
     selections[u.symbol] = {
       anchorExpiry: anchor.expiry,
@@ -217,5 +234,9 @@ export function deskDataFromSnapshot(
     command,
     markets,
     selections,
+    quoteSource: snap.quoteSource ?? null,
+    quotesDelayed: snap.quotesDelayed ?? false,
+    quoteDelayMinutes: snap.quoteDelayMinutes ?? null,
+    quotesAsOf: snap.quotesAsOf ?? null,
   };
 }

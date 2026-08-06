@@ -8,7 +8,6 @@ import {
   MARKETS,
   RATE,
   callSelectionFor,
-  type Market,
   type Selection,
 } from "@/lib/markets";
 import {
@@ -34,16 +33,13 @@ import {
   getHoldings,
   getServerHoldings,
   holdingsFor,
-  mergeSnapshotHoldings,
   setHoldings,
   subscribeHoldings,
   type Holdings,
 } from "@/lib/holdings";
-import {
-  deskDataFromSnapshot,
-  type BalmSnapshot,
-} from "@/lib/snapshot";
+import type { DeskData } from "@/lib/snapshot";
 import { HoldingsPanel } from "./HoldingsPanel";
+import { QuoteStatus } from "./QuoteStatus";
 import { ScenarioChart } from "./ScenarioChart";
 
 function SelectField({
@@ -804,16 +800,22 @@ const PANELS = [
   { kind: "call" as const, label: "Calls", blurb: "Long-dated call anchor, weekly short calls" },
 ];
 
-export function CalendarDesk() {
-  const [active, setActive] = useState("GLXY");
+/**
+ * The desk renders whatever snapshot was committed — there is no refresh
+ * button, because refreshing is `balm quotes` (or `balm sync`) writing a new
+ * snapshot, not something a page view can do. The status line says whether
+ * the quote feed is up and how old these prices are.
+ */
+export function CalendarDesk({ initial }: { initial?: DeskData }) {
+  const markets = initial?.markets ?? MARKETS;
+  const asof = initial?.asof ?? ASOF;
+
+  const [active, setActive] = useState(markets[0]?.symbol ?? "GLXY");
   const [panel, setPanel] = useState<OptionKind | null>("put");
-  const [markets, setMarkets] = useState<Market[]>(MARKETS);
-  const [selections, setSelections] =
-    useState<Record<string, Selection>>(DEFAULTS);
-  const [asof, setAsof] = useState(ASOF);
-  const [updating, setUpdating] = useState(false);
-  const [status, setStatus] = useState<string | null>(null);
-  const [statusTone, setStatusTone] = useState<"ok" | "warn" | "bad">("ok");
+  const [selections, setSelections] = useState<Record<string, Selection>>({
+    ...DEFAULTS,
+    ...(initial?.selections ?? {}),
+  });
 
   // Manual holdings live in localStorage, which only the browser can read.
   const holdings = useSyncExternalStore(
@@ -846,65 +848,15 @@ export function CalendarDesk() {
   const updateHoldings = (next: Holdings) =>
     setHoldings({ ...holdings, [market.symbol]: next });
 
-  async function handleUpdateData() {
-    setUpdating(true);
-    setStatus(null);
-    try {
-      const res = await fetch("/api/update", { method: "POST" });
-      const body = await res.json();
-      if (!res.ok || !body.ok) {
-        setStatusTone("bad");
-        setStatus(body.error ?? body.detail ?? "Update failed");
-        return;
-      }
-      const snapshot = body.snapshot as BalmSnapshot;
-      const desk = deskDataFromSnapshot(snapshot, body.command as string);
-      setMarkets(desk.markets);
-      setSelections((prev) => ({ ...prev, ...desk.selections }));
-      setHoldings(mergeSnapshotHoldings(getHoldings(), snapshot));
-      setAsof(desk.asof);
-      if (!desk.markets.some((m) => m.symbol === active)) {
-        setActive(desk.markets[0]?.symbol ?? "GLXY");
-      }
-      setStatusTone(body.command === "cached" ? "warn" : "ok");
-      setStatus(body.message ?? `Updated via ${body.command}`);
-    } catch (err) {
-      setStatusTone("bad");
-      setStatus(err instanceof Error ? err.message : "Network error");
-    } finally {
-      setUpdating(false);
-    }
-  }
-
-  const statusColor =
-    statusTone === "ok"
-      ? "text-[var(--ok)]"
-      : statusTone === "warn"
-        ? "text-[var(--warn)]"
-        : "text-[var(--bad)]";
-
   return (
     <div className="mx-auto w-full max-w-6xl space-y-10 px-4 pb-10 pt-0 sm:px-6 lg:px-8">
-      {/* Top bar — Update data */}
-      <div className="-mx-4 border-b border-[var(--border)] bg-[var(--bg-light)] px-4 py-3 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
-        <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-3">
-          <button
-            type="button"
-            onClick={handleUpdateData}
-            disabled={updating}
-            className="rounded-md bg-[var(--accent)] px-3.5 py-1.5 text-sm font-semibold text-[#0d1117] transition hover:brightness-110 disabled:cursor-wait disabled:opacity-60"
-          >
-            {updating ? "Updating…" : "Update data"}
-          </button>
-          <span className="text-xs text-[var(--text-dim)]">
-            Runs <code className="text-[var(--text)]">balm sync</code>, falls
-            back to <code className="text-[var(--text)]">balm plan</code>
-          </span>
-          {status ? (
-            <span className={`ml-auto text-xs ${statusColor}`}>{status}</span>
-          ) : null}
-        </div>
-      </div>
+      <QuoteStatus
+        symbol={market.symbol}
+        quoteSource={initial?.quoteSource ?? null}
+        // Per-market, since the feed stamps each symbol separately.
+        quotesAsOf={market.quotesAsOf ?? initial?.quotesAsOf ?? null}
+        delayMinutes={initial?.quoteDelayMinutes ?? null}
+      />
 
       <header className="space-y-3 pt-6">
         <p className="text-sm font-medium tracking-[0.28em] uppercase text-[var(--accent)]">
