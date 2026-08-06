@@ -9,13 +9,56 @@ import {
   type OptionHolding,
 } from "@/lib/holdings";
 import type { Market } from "@/lib/markets";
-import { fmtDate, usd, usdOrDash, type OptionKind } from "@/lib/pricing";
+import { fmtDate, num, usd, usdOrDash, type OptionKind } from "@/lib/pricing";
 
 const inputClass =
   "w-full rounded-md border border-[var(--border)] bg-[var(--bg)] px-2.5 py-1.5 font-mono text-sm text-[var(--text-strong)] outline-none focus:border-[var(--accent)]";
 
 const labelClass =
   "text-[10px] uppercase tracking-[0.14em] text-[var(--text-dim)]";
+
+/**
+ * The cash set aside for assignment on short puts. Kept as its own panel,
+ * above the holdings list, because it is the number a trader checks first —
+ * before looking at what is actually held.
+ */
+export function CashPanel({
+  holdings,
+  onChange,
+}: {
+  holdings: Holdings;
+  onChange: (next: Holdings) => void;
+}) {
+  return (
+    <section className="space-y-3 rounded-md border border-[var(--border)] bg-[var(--bg-light)] p-5">
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <h2 className="text-lg font-semibold text-[var(--text-strong)]">
+          Cash available to cover put shorts
+        </h2>
+        <span className="text-xs text-[var(--text-dim)]">
+          Yours to enter — kept in this browser
+        </span>
+      </div>
+      <div className="max-w-xs">
+        <Field label="Cash available">
+          <input
+            type="number"
+            step="0.01"
+            value={holdings.cash}
+            onChange={(e) =>
+              onChange({ ...holdings, cash: Number(e.target.value) || 0 })
+            }
+            className={inputClass}
+          />
+        </Field>
+      </div>
+      <p className="text-xs text-[var(--text-dim)]">
+        What you are holding back to cover assignment if a short put is
+        exercised — not your whole account balance.
+      </p>
+    </section>
+  );
+}
 
 function Field({
   label,
@@ -177,7 +220,7 @@ export function HoldingsPanel({
         </span>
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-3 sm:grid-cols-3">
         <div className="rounded-md border border-[var(--border)] bg-[var(--bg)] px-4 py-3">
           <div className="font-mono text-xl tabular-nums text-[var(--text-strong)]">
             {usd(market.spot)}
@@ -207,18 +250,6 @@ export function HoldingsPanel({
             Stock value
           </div>
         </div>
-
-        <Field label="Cash value">
-          <input
-            type="number"
-            step="0.01"
-            value={holdings.cash}
-            onChange={(e) =>
-              onChange({ ...holdings, cash: Number(e.target.value) || 0 })
-            }
-            className={inputClass}
-          />
-        </Field>
       </div>
 
       <div className="space-y-3">
@@ -291,13 +322,13 @@ export function HoldingsPanel({
                       {o.kind}
                     </td>
                     <td className="px-3 py-2 text-right font-mono tabular-nums text-[var(--text)]">
-                      {o.strike.toFixed(2)}
+                      {num(o.strike, 2)}
                     </td>
                     <td className="px-3 py-2 text-right font-mono tabular-nums text-[var(--text)]">
                       {fmtDate(o.expiry)}
                     </td>
                     <td className="px-3 py-2 text-right font-mono tabular-nums text-[var(--text)]">
-                      {Math.abs(o.quantity)}
+                      {num(Math.abs(o.quantity), 0)}
                     </td>
                     <td className="px-3 py-2 text-right font-mono tabular-nums text-[var(--text)]">
                       {usdOrDash(o.price)}

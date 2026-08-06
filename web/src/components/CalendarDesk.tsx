@@ -19,6 +19,7 @@ import {
   isItm,
   ivFor,
   ladder,
+  num,
   optionGreeks,
   pct,
   pctOrDash,
@@ -39,7 +40,7 @@ import {
 } from "@/lib/holdings";
 import type { DeskData } from "@/lib/snapshot";
 import { applyQuotes, useLiveQuotes } from "@/lib/useLiveQuotes";
-import { HoldingsPanel } from "./HoldingsPanel";
+import { CashPanel, HoldingsPanel } from "./HoldingsPanel";
 import { QuoteStatus } from "./QuoteStatus";
 import { ScenarioChart } from "./ScenarioChart";
 
@@ -134,7 +135,7 @@ function Controls({
         onChange={(v) => onChange({ ...sel, anchorStrike: Number(v) })}
         options={strikes.map((k) => ({
           value: String(k),
-          label: k.toFixed(2),
+          label: num(k, 2),
         }))}
       />
       <SelectField
@@ -152,7 +153,7 @@ function Controls({
         onChange={(v) => onChange({ ...sel, shortStrike: Number(v) })}
         options={strikes.map((k) => ({
           value: String(k),
-          label: k.toFixed(2),
+          label: num(k, 2),
         }))}
       />
     </div>
@@ -263,7 +264,7 @@ function LegsTable({ model }: { model: Model }) {
         rows={[
           [
             `Anchor (long ${kind})`,
-            `${sel.anchorStrike.toFixed(2)}${suffix}`,
+            `${num(sel.anchorStrike, 2)}${suffix}`,
             fmtDate(sel.anchorExpiry),
             `${model.anchorDte}d`,
             pct(model.anchorIv, 0),
@@ -277,7 +278,7 @@ function LegsTable({ model }: { model: Model }) {
           ],
           [
             `Weekly (short ${kind})`,
-            `${sel.shortStrike.toFixed(2)}${suffix}`,
+            `${num(sel.shortStrike, 2)}${suffix}`,
             fmtDate(sel.shortExpiry),
             `${model.shortDte}d`,
             pct(model.shortIv, 0),
@@ -342,7 +343,7 @@ function StrikeLadder({ model }: { model: Model }) {
       return {
         k,
         cells: [
-          k.toFixed(2),
+          num(k, 2),
           usd(g.price),
           usdOrDash(credit),
           usdOrDash(executable(quote, "buy")),
@@ -600,7 +601,7 @@ function CalendarPanel({
               ))}
             </div>
             <p className="text-sm text-[var(--text-dim)]">
-              Each segment is one sale of the {model.weeklyStrike.toFixed(2)}{" "}
+              Each segment is one sale of the {num(model.weeklyStrike, 2)}{" "}
               {noun} expiring {fmtDate(sel.shortExpiry)} ({model.shortDte}d) at{" "}
               {usd(model.weeklyPremium!)} per share — the bid, which is what a
               seller is paid — kept at {pct(CAPTURE_RATE, 0)} after early closes
@@ -903,6 +904,11 @@ export function CalendarDesk({ initial }: { initial?: DeskData }) {
           {market.label} · {market.source}
         </span>
       </div>
+
+      <CashPanel
+        holdings={holdingsFor(holdings, market.symbol)}
+        onChange={updateHoldings}
+      />
 
       <HoldingsPanel
         market={market}

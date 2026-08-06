@@ -184,17 +184,30 @@ export function fmtDate(iso: string): string {
   return `${d} ${months[Number(m) - 1]} ${y.slice(2)}`;
 }
 
+/** Thousands-separated, fixed decimals — every number on the desk goes through this. */
+function grouped(v: number, digits: number): string {
+  return v.toLocaleString("en-US", {
+    minimumFractionDigits: digits,
+    maximumFractionDigits: digits,
+  });
+}
+
 export function usd(v: number, digits = 2): string {
   const sign = v < 0 ? "-" : "";
-  return `${sign}$${Math.abs(v).toFixed(digits)}`;
+  return `${sign}$${grouped(Math.abs(v), digits)}`;
 }
 
 export function pct(v: number, digits = 1): string {
-  return `${(v * 100).toFixed(digits)}%`;
+  return `${grouped(v * 100, digits)}%`;
 }
 
 export function signed(v: number, digits = 2): string {
-  return `${v >= 0 ? "+" : ""}${v.toFixed(digits)}`;
+  return `${v >= 0 ? "+" : ""}${grouped(v, digits)}`;
+}
+
+/** A plain number — a strike, a contract count — with no $ or % sign. */
+export function num(v: number, digits = 2): string {
+  return grouped(v, digits);
 }
 
 export function ladder(spot: number, step: number, span = 7): number[] {

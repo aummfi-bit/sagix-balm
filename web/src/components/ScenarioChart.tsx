@@ -1,5 +1,7 @@
 "use client";
 
+import { usd } from "@/lib/pricing";
+
 type Series = { name: string; data: number[]; color: string };
 
 export function ScenarioChart({
@@ -82,7 +84,7 @@ export function ScenarioChart({
           className="fill-[var(--text-dim)] text-[10px]"
           style={{ fontFamily: "ui-monospace, monospace" }}
         >
-          {`$${v.toFixed(0)}`}
+          {usd(v, 0)}
         </text>
       ))}
     </svg>
