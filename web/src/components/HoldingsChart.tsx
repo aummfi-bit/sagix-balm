@@ -2,10 +2,10 @@
 
 import { portfolioValueAt, type Holdings } from "@/lib/holdings";
 import type { Market } from "@/lib/markets";
-import { usd } from "@/lib/pricing";
+import { ladder, num, usd } from "@/lib/pricing";
 
-const STEPS = 60;
 const RANGE = 0.4;
+const TARGET_STRIKE_LABELS = 7;
 
 /**
  * Total book value across a range of stock prices: cash, shares, and every
@@ -25,9 +25,14 @@ export function HoldingsChart({
   const spot = market.spot;
   const minP = spot * (1 - RANGE);
   const maxP = spot * (1 + RANGE);
+  // Sampled every half strike step, so a kink at an actual strike — the one
+  // place this curve isn't smooth — falls close to a plotted point instead
+  // of getting rounded off between two widely spaced ones.
+  const sampleStep = market.strikeStep / 2;
+  const steps = Math.ceil((maxP - minP) / sampleStep);
   const prices = Array.from(
-    { length: STEPS + 1 },
-    (_, i) => minP + ((maxP - minP) * i) / STEPS,
+    { length: steps + 1 },
+    (_, i) => minP + ((maxP - minP) * i) / steps,
   );
   const values = prices.map((p) => portfolioValueAt(holdings, market, asof, p));
   const current = portfolioValueAt(holdings, market, asof, spot);
@@ -47,6 +52,22 @@ export function HoldingsChart({
 
   const baselineY = y(current);
   const spotX = x(spot);
+
+  // Ticked at the strike grid, not arbitrary fractions of the price range —
+  // these are the prices that line up with actual calls and puts.
+  const strikeDecimals = (String(market.strikeStep).split(".")[1] ?? "").length;
+  const strikeSpan = Math.ceil((maxP - minP) / market.strikeStep / 2) + 1;
+  const strikeTicks = ladder(spot, market.strikeStep, strikeSpan).filter(
+    (k) => k >= minP && k <= maxP,
+  );
+  const labelEvery = Math.max(
+    1,
+    Math.round(strikeTicks.length / TARGET_STRIKE_LABELS),
+  );
+  const strikeLabel = (k: number): string => {
+    const s = num(k, strikeDecimals);
+    return strikeDecimals > 0 ? s.replace(/0+$/, "").replace(/\.$/, "") : s;
+  };
 
   const linePath = values
     .map((v, i) => `${i === 0 ? "M" : "L"} ${x(prices[i])} ${y(v)}`)
@@ -136,21 +157,20 @@ export function HoldingsChart({
             {usd(v, 0)}
           </text>
         ))}
-        {[0, 0.25, 0.5, 0.75, 1].map((f) => {
-          const p = minP + f * (maxP - minP);
-          return (
+        {strikeTicks.map((k, i) =>
+          i % labelEvery === 0 ? (
             <text
-              key={f}
-              x={x(p)}
+              key={k}
+              x={x(k)}
               y={height - 10}
               textAnchor="middle"
               className={tickLabel}
               style={tickFont}
             >
-              {usd(p, 2)}
+              {strikeLabel(k)}
             </text>
-          );
-        })}
+          ) : null,
+        )}
       </svg>
       <p className="text-xs text-[var(--text-dim)]">
         Model prices at each spot, with today&apos;s implied vol and days to
